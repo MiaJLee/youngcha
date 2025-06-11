@@ -106,6 +106,29 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
 			await fetchAndUpdatePriceForced()
 			sendResponse({ success: true })
 			break
+			
+		case 'updateWidget':
+			// 팝업에서 온 위젯 업데이트 요청 처리
+			console.log('팝업에서 위젯 업데이트 요청:', request)
+			
+			// 현재 가격 업데이트
+			if (request.price) {
+				currentPrice = request.price
+			}
+			
+			// 사용자 데이터 업데이트
+			if (request.userData) {
+				userData = request.userData
+			}
+			
+			// 설정 업데이트
+			if (request.settings) {
+				currentSettings = request.settings
+			}
+			
+			// 모든 탭에 위젯 업데이트 메시지 전송
+			await updateWidget()
+			break
 	}
 })
 

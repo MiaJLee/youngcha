@@ -133,14 +133,13 @@ function getWidgetCSS() {
         }
         
         .rsu-widget-header {
-            background: #f8f9fa;
-            color: #333;
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
             padding: 8px 12px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             cursor: move;
-            border-bottom: 1px solid #e9ecef;
         }
         
         .rsu-widget-title {
@@ -157,7 +156,7 @@ function getWidgetCSS() {
         .rsu-widget-close {
             background: none;
             border: none;
-            color: #666;
+            color: white;
             cursor: pointer;
             width: 20px;
             height: 20px;
@@ -171,13 +170,11 @@ function getWidgetCSS() {
         }
         
         .rsu-widget-minimize:hover {
-            background-color: #e9ecef;
-            color: #333;
+            background-color: rgba(255, 255, 255, 0.2);
         }
         
         .rsu-widget-close:hover {
-            background-color: #dc3545;
-            color: white;
+            background-color: rgba(255, 0, 0, 0.3);
         }
         
         .rsu-widget-content {
@@ -239,7 +236,7 @@ function getWidgetCSS() {
         
         .rsu-widget-progress-fill {
             height: 100%;
-            background: #007bff;
+            background: linear-gradient(90deg, #007bff, #28a745);
             transition: width 0.5s ease;
             border-radius: 3px;
         }
@@ -256,27 +253,6 @@ function getWidgetCSS() {
             .rsu-widget-container {
                 background: #2d2d2d;
                 border-color: #404040;
-            }
-            
-            .rsu-widget-header {
-                background: #404040;
-                color: #ffffff;
-                border-bottom-color: #555;
-            }
-            
-            .rsu-widget-minimize,
-            .rsu-widget-close {
-                color: #ccc;
-            }
-            
-            .rsu-widget-minimize:hover {
-                background-color: #555;
-                color: #fff;
-            }
-            
-            .rsu-widget-close:hover {
-                background-color: #dc3545;
-                color: white;
             }
             
             .rsu-widget-content {
@@ -480,28 +456,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 	switch (request.action) {
 		case 'updateWidget':
-			console.log('위젯 업데이트 메시지 수신:', request)
-			
-			// 데이터 업데이트
-			if (request.price !== undefined) {
-				currentData.price = request.price
-			}
-			if (request.userData) {
-				currentData.userData = request.userData
-			}
-			if (request.settings) {
-				currentData.settings = request.settings
-			}
-			
-			console.log('업데이트된 currentData:', currentData)
-			
-			// 위젯이 없으면 생성
-			if (!widget && currentData.settings.enableWidget !== false) {
-				console.log('위젯이 없어서 새로 생성')
-				createWidget()
-			}
-			
-			// 위젯 내용 업데이트
+			currentData.price = request.price
+			currentData.userData = request.userData || {}
+			currentData.settings = request.settings || {}
 			updateWidgetContent()
 			break
 

@@ -453,17 +453,17 @@ button svg {
 
 .progress-bar {
 	flex: 1;
-	height: 8px;
+	height: 6px;
 	background-color: var(--border-color);
-	border-radius: 4px;
+	border-radius: 3px;
 	overflow: hidden;
 }
 
 .progress-fill {
 	height: 100%;
-	background: linear-gradient(90deg, var(--primary-color), var(--success-color));
+	background: var(--primary-color);
 	transition: width 0.5s ease;
-	border-radius: 4px;
+	border-radius: 3px;
 }
 
 .progress-text {

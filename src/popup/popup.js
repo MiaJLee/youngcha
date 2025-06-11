@@ -111,7 +111,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 		updateDisplay()
 		console.log('초기 화면 업데이트 완료')
 
-		// 10. 팝업 활성화 시 항상 최신 주가 조회 시작
+		// 10. 위젯에 현재 데이터 전송
+		await updateWidgetWithCurrentData('팝업 초기화')
+		console.log('위젯 초기 데이터 전송 완료')
+
+		// 11. 팝업 활성화 시 항상 최신 주가 조회 시작
 		console.log('팝업 활성화됨 - 실시간 주가 조회 시작')
 		fetchKakaoPrice() // 비동기로 즉시 실행
 		console.log('주가 조회 API 호출됨')
@@ -401,6 +405,9 @@ async function saveData() {
 		await saveCurrentPrice()
 
 		updateDisplay()
+		
+		// 위젯에 즉시 업데이트된 데이터 전송
+		await updateWidgetWithCurrentData()
 
 		// 저장 후 확인
 		const verification = await chrome.storage.sync.get(['userData'])
@@ -465,6 +472,9 @@ async function saveCurrentPrice(source = '') {
 			}
 
 			console.log('현재가 저장 완료')
+			
+			// 위젯에 즉시 데이터 전송
+			await updateWidgetWithCurrentData(source)
 		} catch (error) {
 			console.error('현재가 저장 실패:', error)
 		}
@@ -740,6 +750,62 @@ function debounce(func, wait) {
 	}
 }
 
+// 위젯에 현재 데이터 전송
+async function updateWidgetWithCurrentData(source = '') {
+	try {
+		const rsuAmount = parseFloat(elements.rsuAmount.value) || 0
+		const avgPrice = parseFloat(elements.avgPrice.value) || 0
+		
+		const userData = {
+			rsuAmount: rsuAmount,
+			avgPrice: avgPrice,
+			lastSaved: new Date().toISOString(),
+		}
+		
+		// 설정 정보도 함께 전송
+		const settingsResult = await chrome.storage.sync.get(['settings'])
+		const settings = settingsResult.settings || { enableWidget: true }
+		
+		console.log('위젯에 데이터 전송:', {
+			price: currentPrice,
+			userData: userData,
+			settings: settings,
+			source: source
+		})
+		
+		// 백그라운드 스크립트를 통해 위젯에 데이터 전송
+		chrome.runtime.sendMessage({
+			action: 'updateWidget',
+			price: currentPrice,
+			userData: userData,
+			settings: settings,
+			source: source
+		})
+		
+		// 현재 활성 탭에만 직접 메시지 전송 (백그라운드 스크립트가 응답하지 않을 경우 대비)
+		try {
+			chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+				if (tabs.length > 0) {
+					chrome.tabs.sendMessage(tabs[0].id, {
+						action: 'updateWidget',
+						price: currentPrice,
+						userData: userData,
+						settings: settings,
+						source: source
+					}).catch(() => {
+						// 탭이 응답하지 않으면 무시
+					})
+				}
+			})
+		} catch (error) {
+			console.log('활성 탭에 메시지 전송 실패:', error)
+		}
+		
+	} catch (error) {
+		console.error('위젯 데이터 전송 실패:', error)
+	}
+}
+
 // 백그라운드 스크립트와 통신
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 	if (request.action === 'priceUpdated') {
@@ -751,6 +817,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 		if (request.source) {
 			updateLastUpdate(request.source)
 		}
+		
+		// 위젯에도 업데이트된 가격 전송
+		updateWidgetWithCurrentData(request.source)
 	}
 })
 
