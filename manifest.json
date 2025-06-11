@@ -1,0 +1,47 @@
+{
+	"manifest_version": 3,
+	"name": "Kakao RSU Value Tracker",
+	"version": "1.0.0",
+	"description": "카카오 RSU 실시간 자산 조회 및 동기부여 위젯",
+	"permissions": ["storage", "notifications", "alarms", "activeTab"],
+	"host_permissions": [
+		"https://yfapi.net/*",
+		"https://query1.finance.yahoo.com/*",
+		"https://query2.finance.yahoo.com/*",
+		"https://finance.yahoo.com/*",
+		"https://finance.naver.com/*"
+	],
+	"action": {
+		"default_popup": "src/popup/popup.html",
+		"default_title": "영차영차",
+		"default_icon": {
+			"16": "assets/icons/icon16.png",
+			"32": "assets/icons/icon32.png",
+			"64": "assets/icons/icon64.png",
+			"128": "assets/icons/icon128.png"
+		}
+	},
+	"background": {
+		"service_worker": "src/background/background.js",
+		"type": "module"
+	},
+	"content_scripts": [
+		{
+			"matches": ["<all_urls>"],
+			"js": ["src/content/content.js"],
+			"run_at": "document_idle"
+		}
+	],
+	"icons": {
+		"16": "assets/icons/icon16.png",
+		"32": "assets/icons/icon32.png",
+		"64": "assets/icons/icon64.png",
+		"128": "assets/icons/icon128.png"
+	},
+	"web_accessible_resources": [
+		{
+			"resources": ["src/widgets/widget.html", "src/widgets/widget.css"],
+			"matches": ["<all_urls>"]
+		}
+	]
+}

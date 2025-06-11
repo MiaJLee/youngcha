@@ -1,0 +1,732 @@
+/* 기본 스타일 */
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+body {
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+	width: 380px;
+	max-height: 600px;
+	overflow-y: auto;
+	background-color: var(--bg-color);
+	color: var(--text-color);
+	transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* CSS 변수 - 라이트 테마 */
+:root {
+	--bg-color: #ffffff;
+	--card-bg: #f8f9fa;
+	--text-color: #333333;
+	--border-color: #e9ecef;
+	--primary-color: #007bff;
+	--secondary-color: #6c757d;
+	--success-color: #28a745;
+	--danger-color: #dc3545;
+	--highlight-color: #ffc107;
+	--shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 다크 테마 */
+[data-theme='dark'] {
+	--bg-color: #1a1a1a;
+	--card-bg: #2d2d2d;
+	--text-color: #ffffff;
+	--border-color: #404040;
+	--primary-color: #0d6efd;
+	--secondary-color: #6c757d;
+	--success-color: #198754;
+	--danger-color: #dc3545;
+	--highlight-color: #ffc107;
+	--shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.container {
+	padding: 16px;
+}
+
+/* 헤더 */
+.header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 20px;
+}
+
+.header h1 {
+	font-size: 20px;
+	font-weight: 700;
+	color: var(--text-color);
+}
+
+.theme-toggle button {
+	background: none;
+	border: 1px solid var(--border-color);
+	border-radius: 50%;
+	width: 36px;
+	height: 36px;
+	cursor: pointer;
+	font-size: 16px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: all 0.3s ease;
+}
+
+.theme-toggle button:hover {
+	background-color: var(--card-bg);
+	transform: scale(1.1);
+}
+
+/* 카드 스타일 */
+.card {
+	background-color: var(--card-bg);
+	border: 1px solid var(--border-color);
+	border-radius: 12px;
+	padding: 16px;
+	margin-bottom: 16px;
+	box-shadow: var(--shadow);
+	transition: all 0.3s ease;
+}
+
+.card:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.card h2 {
+	font-size: 16px;
+	font-weight: 600;
+	margin-bottom: 12px;
+	color: var(--text-color);
+}
+
+/* 입력 그룹 */
+.input-group {
+	display: flex;
+	align-items: center;
+	margin-bottom: 12px;
+	gap: 8px;
+}
+
+.input-group label {
+	flex: 1;
+	font-size: 14px;
+	font-weight: 500;
+}
+
+.input-group input {
+	flex: 1;
+	padding: 8px 12px;
+	border: 1px solid var(--border-color);
+	border-radius: 6px;
+	background-color: var(--bg-color);
+	color: var(--text-color);
+	font-size: 14px;
+}
+
+.input-group input:focus {
+	outline: none;
+	border-color: var(--primary-color);
+	box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.unit {
+	font-size: 12px;
+	color: var(--secondary-color);
+	min-width: 20px;
+	flex: none;
+}
+
+/* 버튼 */
+.btn-primary,
+.btn-secondary {
+	padding: 10px 16px;
+	border: none;
+	border-radius: 6px;
+	font-size: 14px;
+	font-weight: 500;
+	cursor: pointer;
+	transition: all 0.3s ease;
+	width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+}
+
+.btn-primary {
+	background-color: var(--primary-color);
+	color: white;
+}
+
+.btn-secondary {
+	background-color: var(--secondary-color);
+	color: white;
+}
+
+/* 카드 헤더 */
+.card-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 16px;
+}
+
+.card-header h2 {
+	margin-bottom: 0;
+}
+
+.btn-edit {
+	background: none;
+	border: 1px solid var(--border-color);
+	border-radius: 6px;
+	padding: 6px 12px;
+	font-size: 12px;
+	color: var(--text-color);
+	cursor: pointer;
+	transition: all 0.3s ease;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+/* 수정 버튼 호버 효과 제거됨 */
+
+.btn-edit svg {
+	transition: all 0.3s ease;
+}
+
+/* 헤더 버튼 그룹 */
+.header-buttons {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+/* 아이콘 버튼 */
+.btn-icon {
+	background: none;
+	border: 1px solid var(--border-color);
+	border-radius: 6px;
+	width: 28px;
+	height: 28px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	transition: all 0.3s ease;
+	color: var(--secondary-color);
+}
+
+/* 호버 효과 제거됨 */
+
+.btn-icon svg {
+	transition: all 0.3s ease;
+}
+
+/* 모든 버튼의 SVG 아이콘 공통 스타일 */
+button svg {
+	flex-shrink: 0;
+	transition: all 0.3s ease;
+}
+
+/* 자산 정보 */
+.asset-info {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.info-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 8px 0;
+	border-bottom: 1px solid var(--border-color);
+	position: relative;
+	gap: 4px;
+}
+
+.info-row:last-child,
+.info-row.no-border-bottom {
+	border-bottom: none;
+}
+
+.info-row.highlight-row {
+	background-color: rgba(0, 123, 255, 0.05);
+	border-radius: 6px;
+	padding: 12px;
+	margin: 8px 0 2px 0;
+	border: 1px solid rgba(0, 123, 255, 0.2);
+}
+
+.label {
+	font-size: 12px;
+	color: var(--secondary-color);
+	flex: 1;
+}
+
+.value {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--text-color);
+	flex: 1;
+	text-align: right;
+}
+
+.highlight {
+	color: var(--primary-color);
+	font-size: 16px;
+	font-weight: 700;
+}
+
+.positive {
+	color: var(--success-color) !important;
+}
+
+.negative {
+	color: var(--danger-color) !important;
+}
+
+/* 수정 모드 인풋 */
+.edit-input {
+	flex: 1;
+	padding: 6px 2px;
+	border: none;
+	border-bottom: 1px solid var(--primary-color);
+	background-color: transparent;
+	color: var(--text-color);
+	font-size: 14px;
+	margin-right: 8px;
+}
+
+.edit-input:focus {
+	outline: none;
+	border-bottom-color: var(--primary-color);
+	border-bottom-width: 2px;
+}
+
+/* 버튼 그룹 */
+.button-group {
+	display: flex;
+	gap: 8px;
+}
+
+.button-group .btn-primary,
+.button-group .btn-secondary,
+.button-group .btn-cancel {
+	flex: 1;
+}
+
+.btn-cancel {
+	padding: 10px 16px;
+	border: 1px solid var(--danger-color);
+	border-radius: 6px;
+	background-color: transparent;
+	color: var(--danger-color);
+	font-size: 14px;
+	font-weight: 500;
+	cursor: pointer;
+	transition: all 0.3s ease;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+}
+
+/* 취소 버튼 호버 효과 제거됨 */
+
+/* 숨김/보임 클래스 */
+.hidden {
+	display: none !important;
+}
+
+/* 같은 행에 두 개 정보 표시 */
+.dual-info {
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.info-item {
+	display: flex;
+	align-items: center;
+	flex: 1;
+	gap: 2px;
+}
+
+.info-item .label {
+	font-size: 12px;
+	color: var(--secondary-color);
+	min-width: 60px;
+	flex: none;
+}
+
+.info-item .value {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--text-color);
+	flex: 1;
+}
+
+.info-item .edit-input {
+	flex: none;
+	width: 70px;
+	margin-right: 0;
+	padding: 4px 2px;
+	font-size: 12px;
+	border: none;
+	border-bottom: 1px solid var(--primary-color);
+	background-color: transparent;
+}
+
+.info-item .unit {
+	font-size: 12px;
+	color: var(--secondary-color);
+	min-width: 16px;
+	flex: none;
+}
+
+.info-item .value.positive {
+	color: var(--success-color) !important;
+}
+
+.info-item .value.negative {
+	color: var(--danger-color) !important;
+}
+
+.info-separator {
+	color: var(--border-color);
+	font-size: 14px;
+	margin: 0 8px;
+	opacity: 0.8;
+	flex: none;
+}
+
+.profit-bracket {
+	font-size: 12px;
+	font-weight: normal;
+}
+
+/* 시뮬레이션 */
+.simulation {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.target-item {
+	padding: 12px;
+	border: 1px solid var(--border-color);
+	border-radius: 8px;
+	background-color: var(--bg-color);
+	position: relative;
+}
+
+.target-info {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 8px;
+	position: relative;
+}
+
+.target-name {
+	font-size: 14px;
+	font-weight: 500;
+}
+
+.target-price {
+	font-size: 12px;
+	color: var(--secondary-color);
+}
+
+.progress-info {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 4px;
+}
+
+.progress-bar {
+	flex: 1;
+	height: 8px;
+	background-color: var(--border-color);
+	border-radius: 4px;
+	overflow: hidden;
+}
+
+.progress-fill {
+	height: 100%;
+	background: linear-gradient(90deg, var(--primary-color), var(--success-color));
+	transition: width 0.5s ease;
+	border-radius: 4px;
+}
+
+.progress-text {
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--primary-color);
+	min-width: 40px;
+	text-align: right;
+}
+
+.required-price {
+	font-size: 12px;
+	color: var(--secondary-color);
+	font-style: italic;
+}
+
+/* 차트 */
+.chart-container {
+	height: 200px;
+	position: relative;
+}
+
+/* 설정 */
+.settings {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.setting-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.setting-item label {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 14px;
+	cursor: pointer;
+}
+
+.setting-item input[type='checkbox'] {
+	width: 16px;
+	height: 16px;
+	accent-color: var(--primary-color);
+}
+
+.setting-item input[type='number'] {
+	flex: 1;
+	padding: 6px 8px;
+	border: 1px solid var(--border-color);
+	border-radius: 4px;
+	background-color: var(--bg-color);
+	color: var(--text-color);
+	font-size: 14px;
+}
+
+/* 푸터 */
+.footer {
+	margin-top: 16px;
+	padding-top: 12px;
+	border-top: 1px solid var(--border-color);
+	text-align: center;
+}
+
+.footer p {
+	font-size: 12px;
+	color: var(--secondary-color);
+}
+
+/* 스크롤바 */
+::-webkit-scrollbar {
+	width: 6px;
+}
+
+::-webkit-scrollbar-track {
+	background: var(--card-bg);
+}
+
+::-webkit-scrollbar-thumb {
+	background: var(--border-color);
+	border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: var(--secondary-color);
+}
+
+/* 애니메이션 */
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.card {
+	animation: fadeIn 0.3s ease-out;
+}
+
+/* 로딩 상태 */
+.loading {
+	opacity: 0.6;
+	pointer-events: none;
+}
+
+.loading::after {
+	content: '';
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 20px;
+	height: 20px;
+	margin: -10px 0 0 -10px;
+	border: 2px solid var(--border-color);
+	border-top: 2px solid var(--primary-color);
+	border-radius: 50%;
+	animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+	0% {
+		transform: rotate(0deg);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
+.btn-delete-inline:hover {
+	background-color: #dc2626;
+}
+
+/* 인라인 수정 모드 */
+.target-info.editing {
+	flex-direction: column;
+	gap: 16px;
+	padding: 16px;
+	background-color: rgba(0, 123, 255, 0.05);
+	border-radius: 6px;
+	border: 1px solid var(--primary-color);
+}
+
+.inline-edit-group {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.emoji-selector {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.emoji-selector .form-label {
+	font-size: 12px;
+	font-weight: 500;
+	color: var(--text-color);
+}
+
+.emoji-options {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.emoji-option {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 40px;
+	border: 2px solid var(--border-color);
+	border-radius: 8px;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	background-color: var(--bg-color);
+}
+
+.emoji-option:hover {
+	border-color: var(--primary-color);
+	transform: scale(1.05);
+}
+
+.emoji-option.selected {
+	border-color: var(--primary-color);
+	background-color: rgba(0, 123, 255, 0.1);
+}
+
+.emoji-option input[type='radio'] {
+	display: none;
+}
+
+.emoji-display {
+	font-size: 20px;
+	line-height: 1;
+}
+
+.input-row {
+	display: flex;
+	flex-direction: column;
+}
+
+.inline-edit-group input {
+	padding: 8px 12px;
+	border: 1px solid var(--border-color);
+	border-radius: 4px;
+	background-color: var(--bg-color);
+	color: var(--text-color);
+	font-size: 14px;
+}
+
+.inline-edit-group input:focus {
+	outline: none;
+	border-color: var(--primary-color);
+}
+
+.inline-edit-buttons {
+	display: flex;
+	gap: 6px;
+	justify-content: flex-end;
+}
+
+.btn-save-inline,
+.btn-cancel-inline,
+.btn-delete-inline {
+	width: 28px;
+	height: 28px;
+	border: none;
+	border-radius: 4px;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: all 0.2s ease;
+}
+
+.btn-save-inline {
+	background-color: var(--success-color);
+	color: white;
+}
+
+.btn-save-inline:hover {
+	background-color: #16a34a;
+}
+
+.btn-cancel-inline {
+	background-color: var(--secondary-color);
+	color: white;
+}
+
+.btn-cancel-inline:hover {
+	background-color: #6b7280;
+}
+
+.btn-delete-inline {
+	background-color: var(--danger-color);
+	color: white;
+}

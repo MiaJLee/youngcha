@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ko">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>영차영차</title>
+		<link rel="stylesheet" href="popup.css" />
+		<!-- Chart.js 제거 - 자체 차트 구현으로 변경 -->
+	</head>
+	<body>
+		<div class="container">
+			<header class="header">
+				<h1>🐜 개미는 뚠뚠.. 오늘도 뚠뚠..</h1>
+				<div class="theme-toggle">
+					<button id="themeToggle">🌙</button>
+				</div>
+			</header>
+
+			<div class="card">
+				<div class="card-header">
+					<h2>지금 카카오 주식은?</h2>
+					<div class="header-buttons">
+						<button id="refreshPrice" class="btn-icon" title="새로고침">
+							<svg
+								width="14"
+								height="14"
+								viewBox="0 0 24 24"
+								fill="none"
+								xmlns="http://www.w3.org/2000/svg"
+							>
+								<path
+									d="M4 4V9H4.58152M4.58152 9C5.24618 7.35817 6.43967 5.9735 7.96411 5.08338C9.48855 4.19325 11.2681 3.8379 13.033 4.06644C14.7979 4.29498 16.4446 5.10566 17.6909 6.35199C18.9372 7.59831 19.7479 9.24493 19.9764 11.0098C20.205 12.7747 19.8496 14.5543 18.9595 16.0787C18.0694 17.6032 16.6847 18.7967 15.0429 19.4613C13.401 20.126 11.5717 20.2253 9.87384 19.7417C8.17594 19.2581 6.68648 18.2185 5.64835 16.7742M4.58152 9H9"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								/>
+							</svg>
+						</button>
+						<button id="editModeToggle" class="btn-icon" title="수정">
+							<svg
+								width="14"
+								height="14"
+								viewBox="0 0 24 24"
+								fill="none"
+								xmlns="http://www.w3.org/2000/svg"
+							>
+								<path
+									d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								/>
+								<path
+									d="M18.5 2.50005C18.8978 2.10223 19.4374 1.87873 20 1.87873C20.5626 1.87873 21.1022 2.10223 21.5 2.50005C21.8978 2.89787 22.1213 3.43745 22.1213 4.00005C22.1213 4.56266 21.8978 5.10223 21.5 5.50005L12 15L8 16L9 12L18.5 2.50005Z"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								/>
+							</svg>
+						</button>
+					</div>
+
+					<!-- 수정 모드 버튼들 (수정 버튼 위치에 표시) -->
+					<div id="editModeButtons" class="header-buttons hidden">
+						<button id="saveData" class="btn-icon" title="저장">
+							<svg
+								width="14"
+								height="14"
+								viewBox="0 0 24 24"
+								fill="none"
+								xmlns="http://www.w3.org/2000/svg"
+							>
+								<path
+									d="M19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H16L21 8V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21Z"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								/>
+								<path
+									d="M17 21V13H7V21"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								/>
+								<path
+									d="M7 3V8H15"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								/>
+							</svg>
+						</button>
+						<button id="cancelEdit" class="btn-icon" title="취소">
+							<svg
+								width="14"
+								height="14"
+								viewBox="0 0 24 24"
+								fill="none"
+								xmlns="http://www.w3.org/2000/svg"
+							>
+								<path
+									d="M18 6L6 18"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								/>
+								<path
+									d="M6 6L18 18"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								/>
+							</svg>
+						</button>
+					</div>
+				</div>
+
+				<div class="asset-info">
+					<!-- 평단가와 보유 RSU 정보 (같은 행에 배치) -->
+					<div class="info-row dual-info">
+						<div class="info-item">
+							<span class="label">평단가</span>
+							<span id="avgPriceDisplay" class="value">-</span>
+							<input
+								type="number"
+								id="avgPrice"
+								class="edit-input hidden"
+								placeholder="예: 37150"
+								min="0"
+							/>
+							<span class="unit">원</span>
+						</div>
+						<div class="info-separator">|</div>
+						<div class="info-item">
+							<span class="label">보유 RSU</span>
+							<span id="rsuAmountDisplay" class="value">-</span>
+							<input
+								type="number"
+								id="rsuAmount"
+								class="edit-input hidden"
+								placeholder="예: 125"
+								min="0"
+							/>
+							<span class="unit">주</span>
+						</div>
+					</div>
+
+					<!-- 현재가와 수익률 정보 (같은 행에 배치) -->
+					<div class="info-row dual-info no-border-bottom">
+						<div class="info-item">
+							<span class="label">현재가</span>
+							<span id="currentPrice" class="value">로딩중...</span>
+							<span class="unit">원</span>
+						</div>
+						<div class="info-separator">|</div>
+						<div class="info-item">
+							<span class="label">수익률</span>
+							<span id="profitRate" class="value">0</span>
+							<span class="unit">%</span>
+						</div>
+					</div>
+
+					<div class="info-row highlight-row">
+						<span class="label">총 보유 금액</span>
+						<span id="totalAsset" class="value highlight">0원</span>
+					</div>
+				</div>
+
+				<!-- 기존 수정 모드 버튼들 제거 - 헤더에 통합됨 -->
+			</div>
+
+			<div class="card">
+				<div class="card-header">
+					<h2>보상 시뮬레이션</h2>
+					<div class="header-buttons">
+						<button id="addCustomTarget" class="btn-icon" title="내 목표 추가하기">
+							<svg
+								width="14"
+								height="14"
+								viewBox="0 0 24 24"
+								fill="none"
+								xmlns="http://www.w3.org/2000/svg"
+							>
+								<path
+									d="M12 5v14M5 12h14"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								/>
+							</svg>
+						</button>
+					</div>
+				</div>
+				<div id="simulationContainer" class="simulation">
+					<!-- 동적으로 생성되는 상품들 -->
+				</div>
+			</div>
+
+			<div class="card">
+				<h2>📊 주가 차트</h2>
+				<div class="chart-container">
+					<canvas id="priceChart" width="300" height="200"></canvas>
+				</div>
+			</div>
+
+			<div class="card">
+				<h2>⚙️ 설정</h2>
+				<div class="settings">
+					<div class="setting-item">
+						<label>
+							<input type="checkbox" id="enableWidget" />
+							위젯 표시
+						</label>
+					</div>
+					<div class="setting-item">
+						<label>
+							<input type="checkbox" id="enableNotifications" />
+							알림 활성화
+						</label>
+					</div>
+					<div class="setting-item">
+						<label for="targetPrice">목표 주가:</label>
+						<input type="number" id="targetPrice" placeholder="예: 120000" />
+					</div>
+				</div>
+			</div>
+
+			<footer class="footer">
+				<p>마지막 업데이트: <span id="lastUpdate">-</span></p>
+			</footer>
+		</div>
+
+		<script src="api.util.js"></script>
+		<script src="popup.js"></script>
+	</body>
+</html>

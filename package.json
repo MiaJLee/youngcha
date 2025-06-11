@@ -1,0 +1,31 @@
+{
+	"name": "kakao-rsu-tracker",
+	"version": "1.0.0",
+	"description": "카카오 RSU 실시간 자산 조회 및 동기부여 위젯",
+	"main": "manifest.json",
+	"scripts": {
+		"dev": "echo 'Development mode - load extension in Chrome'",
+		"build": "echo 'Building extension...' && npm run validate",
+		"validate": "node -e \"console.log('Validating manifest.json...'); JSON.parse(require('fs').readFileSync('manifest.json', 'utf8')); console.log('✅ Valid!')\"",
+		"test": "node tests/test_calculation.js",
+		"clean": "rm -rf dist/",
+		"package": "npm run build && zip -r kakao-rsu-tracker.zip * -x '*.git*' 'node_modules/*' 'tests/*' '*.md'"
+	},
+	"keywords": [
+		"chrome-extension",
+		"kakao",
+		"rsu",
+		"stock",
+		"tracker",
+		"finance"
+	],
+	"author": "KakaoCommerce Team",
+	"license": "MIT",
+	"devDependencies": {
+		"prettier": "^3.0.0",
+		"eslint": "^8.0.0"
+	},
+	"engines": {
+		"node": ">=16.0.0"
+	}
+}
