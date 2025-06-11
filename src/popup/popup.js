@@ -25,8 +25,6 @@ const elements = {
 	simulationContainer: document.getElementById('simulationContainer'),
 	addCustomTarget: document.getElementById('addCustomTarget'),
 
-
-
 	// 버튼들
 	editModeToggle: document.getElementById('editModeToggle'),
 	saveDataBtn: document.getElementById('saveData'),
@@ -35,7 +33,6 @@ const elements = {
 	themeToggleBtn: document.getElementById('themeToggle'),
 
 	// 버튼 그룹
-	// normalModeButtons 제거 - 개별 버튼으로 변경
 	editModeButtons: document.getElementById('editModeButtons'),
 
 	// 설정
@@ -59,16 +56,12 @@ window.showNotification = showNotification
 
 // 초기화
 document.addEventListener('DOMContentLoaded', async () => {
-	console.log('팝업 로드 시작')
-
 	// Chrome API 확인
 	if (typeof chrome === 'undefined' || !chrome.storage) {
 		console.error('Chrome API가 사용 불가능합니다!')
 		alert('Chrome 확장 프로그램 환경에서만 동작합니다.')
 		return
 	}
-
-	console.log('Chrome API 사용 가능')
 
 	try {
 		// 로딩 상태 표시
@@ -79,67 +72,50 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 		// 1. 설정 로드
 		await loadSettings()
-		console.log('설정 로드 완료')
 
 		// 2. 저장된 RSU 데이터 로드 (초기값 135주, 37,150원 포함)
 		await loadStoredData()
-		console.log('RSU 데이터 로드 완료')
 
 		// 3. 저장된 현재가 로드
 		await loadStoredPrice()
-		console.log('저장된 현재가 로드 완료')
 
 		// 4. 이벤트 리스너 설정
 		setupEventListeners()
-		console.log('이벤트 리스너 설정 완료')
 
 		// 5. 커스텀 목표 로드
 		await loadCustomTarget()
-		console.log('커스텀 목표 로드 완료')
 
 		// 6. 시뮬레이션 렌더링
 		renderSimulation()
-		console.log('시뮬레이션 렌더링 완료')
 
 		// 7. 헤더 버튼 상태 업데이트
 		updateHeaderButton()
-		console.log('헤더 버튼 업데이트 완료')
-
-		
 
 		// 9. 저장된 데이터로 초기 화면 업데이트
 		updateDisplay()
-		console.log('초기 화면 업데이트 완료')
 
 		// 10. 위젯에 현재 데이터 전송
 		await updateWidgetWithCurrentData('팝업 초기화')
-		console.log('위젯 초기 데이터 전송 완료')
 
 		// 11. 팝업 활성화 시 항상 최신 주가 조회 시작
-		console.log('팝업 활성화됨 - 실시간 주가 조회 시작')
 		fetchKakaoPrice() // 비동기로 즉시 실행
-		console.log('주가 조회 API 호출됨')
 	} catch (error) {
 		console.error('초기화 중 오류:', error)
 		showLoading(false)
 		// 오류가 있어도 기본 화면은 표시
 		updateDisplay()
 	}
-
-	console.log('팝업 초기화 완료')
 })
 
 // 팝업 활성화/포커스 시 API 호출
 document.addEventListener('visibilitychange', () => {
 	if (!document.hidden) {
-		console.log('팝업이 다시 보임 - 주가 API 재호출')
 		fetchKakaoPrice()
 	}
 })
 
 // 윈도우 포커스 시에도 API 호출
 window.addEventListener('focus', () => {
-	console.log('팝업 포커스됨 - 주가 API 호출')
 	fetchKakaoPrice()
 })
 
@@ -148,11 +124,6 @@ function setupEventListeners() {
 	// 수정 모드 관련
 	elements.editModeToggle.addEventListener('click', toggleEditMode)
 	elements.saveDataBtn.addEventListener('click', () => {
-		console.log('저장 버튼 클릭됨')
-		console.log('현재 입력값:', {
-			rsuAmount: elements.rsuAmount.value,
-			avgPrice: elements.avgPrice.value,
-		})
 		saveData()
 		toggleEditMode() // 저장 후 수정 모드 해제
 	})
@@ -198,7 +169,6 @@ async function fetchKakaoPrice(force = false) {
 		// 한국 주식 시장 운영 시간 체크 (강제 모드가 아닐 때만)
 		if (!force && !isKoreanMarketOpen()) {
 			const statusMessage = getMarketStatusMessage()
-			console.log(`시장 시간 외: ${statusMessage}`)
 			
 			// 시장 시간 외에는 API 호출하지 않고 저장된 데이터만 표시
 			showNotification(`📅 ${statusMessage}`)
@@ -213,7 +183,6 @@ async function fetchKakaoPrice(force = false) {
 
 		if (result && result.price > 0) {
 			currentPrice = result.price
-			console.log(`주가 조회 성공: ₩${currentPrice.toLocaleString()} (제공: ${result.source})`)
 
 			// 히스토리 데이터 처리
 			if (result.history && result.history.length > 0) {
@@ -283,16 +252,7 @@ function updateDisplay() {
 	const rsuAmount = parseFloat(elements.rsuAmount.value) || 0
 	const avgPrice = parseFloat(elements.avgPrice.value) || 0
 
-	console.log('화면 업데이트:', {
-		rsuAmount,
-		avgPrice,
-		currentPrice,
-		isEditMode,
-		elements: {
-			rsuAmountValue: elements.rsuAmount?.value,
-			avgPriceValue: elements.avgPrice?.value,
-		},
-	})
+
 
 	// RSU 수량 표시 업데이트
 	if (elements.rsuAmountDisplay) {
@@ -321,27 +281,17 @@ function updateDisplay() {
 		totalAsset = rsuAmount * currentPrice
 	}
 
-	console.log('총 자산 계산:', { rsuAmount, currentPrice, totalAsset })
-
 	// 수익률 계산 (현재가, 매입가, 수량이 모두 있을 때만)
 	let profitAmount = 0
 	if (currentPrice > 0 && avgPrice > 0 && rsuAmount > 0) {
 		const profitRate = ((currentPrice - avgPrice) / avgPrice) * 100
 		profitAmount = rsuAmount * (currentPrice - avgPrice)
 
-		console.log('수익률 계산:', {
-			currentPrice,
-			avgPrice,
-			profitRate,
-			profitAmount,
-		})
-
 		if (elements.profitRate) {
 			elements.profitRate.textContent = `${profitRate > 0 ? '+' : ''}${profitRate.toFixed(2)}`
 			elements.profitRate.className = `value ${profitRate >= 0 ? 'positive' : 'negative'}`
 		}
 	} else {
-		console.log('수익률 계산 생략:', { currentPrice, avgPrice, rsuAmount })
 
 		if (elements.profitRate) {
 			if (currentPrice === 0) {
@@ -367,7 +317,6 @@ function updateDisplay() {
 		} else {
 			elements.totalAsset.textContent = '조회중...'
 		}
-		console.log('총 자산 표시 업데이트:', elements.totalAsset.textContent)
 	}
 
 	// 보상 시뮬레이션 업데이트
@@ -375,8 +324,6 @@ function updateDisplay() {
 
 	// 현재가 색상 업데이트 (평단가 입력 후 재계산)
 	updatePriceDisplay()
-
-	console.log('화면 업데이트 완료')
 }
 
 
@@ -394,11 +341,8 @@ async function saveData() {
 		lastSaved: new Date().toISOString(),
 	}
 
-	console.log('저장할 데이터:', data)
-
 	try {
 		await chrome.storage.sync.set({ userData: data })
-		console.log('데이터 저장 성공')
 		showNotification(`데이터 저장 완료: ${rsuAmount}주, 평균매입가 ₩${avgPrice.toLocaleString()}`)
 
 		// 현재가도 함께 저장
@@ -411,7 +355,6 @@ async function saveData() {
 
 		// 저장 후 확인
 		const verification = await chrome.storage.sync.get(['userData'])
-		console.log('저장 확인:', verification.userData)
 	} catch (error) {
 		console.error('저장 실패:', error)
 		showNotification('저장에 실패했습니다: ' + error.message)
@@ -419,7 +362,6 @@ async function saveData() {
 		// 로컬 스토리지로 폴백 시도
 		try {
 			await chrome.storage.local.set({ userData: data })
-			console.log('로컬 스토리지에 저장됨')
 			showNotification('로컬 스토리지에 저장되었습니다.')
 		} catch (localError) {
 			console.error('로컬 저장도 실패:', localError)
@@ -459,11 +401,6 @@ async function saveCurrentPrice(source = '') {
 				})),
 			}
 
-			console.log('현재가 및 히스토리 저장:', {
-				currentPrice,
-				historyLength: priceHistory.length,
-				source: source,
-			})
 
 			if (chrome.storage && chrome.storage.sync) {
 				await chrome.storage.sync.set({ priceData })
@@ -471,7 +408,6 @@ async function saveCurrentPrice(source = '') {
 				await chrome.storage.local.set({ priceData })
 			}
 
-			console.log('현재가 저장 완료')
 			
 			// 위젯에 즉시 데이터 전송
 			await updateWidgetWithCurrentData(source)
@@ -508,15 +444,7 @@ async function loadStoredPrice() {
 						time: new Date(item.time),
 						price: item.price,
 					}))
-					console.log('저장된 히스토리 로드:', priceHistory.length, '개 항목')
 				}
-
-				console.log('저장된 현재가 로드:', {
-					price: currentPrice,
-					lastUpdate: lastPriceUpdate,
-					source: savedSource,
-					historyLength: priceHistory.length,
-				})
 
 				// 마지막 업데이트 시간 표시 (API 소스 포함)
 				if (lastPriceUpdate && elements.lastUpdate) {
@@ -530,8 +458,6 @@ async function loadStoredPrice() {
 					}
 				}
 			}
-		} else {
-			console.log('저장된 현재가 없음')
 		}
 	} catch (error) {
 		console.error('저장된 현재가 로드 실패:', error)
@@ -552,19 +478,16 @@ async function loadStoredData() {
 		if (result.userData) {
 			elements.rsuAmount.value = result.userData.rsuAmount || 135
 			elements.avgPrice.value = result.userData.avgPrice || 37150
-			console.log('저장된 데이터 로드됨:', result.userData)
 		} else {
 			// 초기값 설정 (135주, 37,150원)
 			elements.rsuAmount.value = 135
 			elements.avgPrice.value = 37150
-			console.log('초기값 설정됨: RSU 135주, 매입가 37,150원')
 		}
 	} catch (error) {
 		console.error('데이터 로드 실패:', error)
 		// 오류 시에도 초기값 설정
 		elements.rsuAmount.value = 135
 		elements.avgPrice.value = 37150
-		console.log('오류로 인한 초기값 설정')
 	}
 }
 
@@ -632,7 +555,6 @@ function updateWidgetStatus() {
 // 수정 모드 토글
 function toggleEditMode() {
 	isEditMode = !isEditMode
-	console.log('수정 모드 토글:', isEditMode)
 
 	if (isEditMode) {
 		// 수정 모드 활성화
@@ -651,7 +573,6 @@ function toggleEditMode() {
 			elements.rsuAmount.focus()
 		}
 
-		console.log('수정 모드 활성화됨')
 	} else {
 		// 수정 모드 비활성화
 		// 입력 요소 숨기고 표시 요소 보이기
@@ -667,13 +588,11 @@ function toggleEditMode() {
 		// 화면 업데이트
 		updateDisplay()
 
-		console.log('수정 모드 비활성화됨')
 	}
 }
 
 // 수정 취소
 function cancelEdit() {
-	console.log('수정 취소')
 
 	// 저장된 데이터로 되돌리기
 	loadStoredData().then(() => {
@@ -684,7 +603,6 @@ function cancelEdit() {
 
 // 수동 새로고침
 async function refreshPrice() {
-	console.log('수동 새로고침 시작...')
 
 	// 새로운 API 요청 (시장 시간 무관하게 실행)
 	await fetchKakaoPrice(true) // force=true로 시장 시간 체크 무시
@@ -723,8 +641,6 @@ function showLoading(show) {
 
 // 알림 표시
 function showNotification(message) {
-	// 간단한 토스트 알림 (실제로는 Chrome API 사용)
-	console.log('알림:', message)
 
 	// Chrome 알림 API 사용
 	if (chrome.notifications) {
@@ -766,12 +682,7 @@ async function updateWidgetWithCurrentData(source = '') {
 		const settingsResult = await chrome.storage.sync.get(['settings'])
 		const settings = settingsResult.settings || { enableWidget: true }
 		
-		console.log('위젯에 데이터 전송:', {
-			price: currentPrice,
-			userData: userData,
-			settings: settings,
-			source: source
-		})
+
 		
 		// 백그라운드 스크립트를 통해 위젯에 데이터 전송
 		chrome.runtime.sendMessage({
@@ -798,7 +709,6 @@ async function updateWidgetWithCurrentData(source = '') {
 				}
 			})
 		} catch (error) {
-			console.log('활성 탭에 메시지 전송 실패:', error)
 		}
 		
 	} catch (error) {
@@ -830,7 +740,6 @@ setInterval(async () => {
 		updateDisplay()
 	} else if (document.visibilityState === 'visible') {
 		// 시장 시간 외에는 UI만 업데이트 (저장된 데이터로)
-		console.log('시장 시간 외 - API 호출 생략, UI만 업데이트')
 		updateDisplay()
 	}
 }, 5 * 60 * 1000)

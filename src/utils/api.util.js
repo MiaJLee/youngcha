@@ -14,11 +14,9 @@ let isFetchingPrice = false
 export async function fetchKakaoPrice() {
 	// 이미 API 호출 중이면 스킵
 	if (isFetchingPrice) {
-		console.log('이미 API 호출 중이므로 스킵')
 		return
 	}
 
-	console.log('팝업 활성화 - 주가 조회 시작...')
 	isFetchingPrice = true
 
 	// API 시도 순서 - Yahoo Finance를 최우선으로 사용
@@ -30,12 +28,10 @@ export async function fetchKakaoPrice() {
 
 	for (let i = 0; i < apiMethods.length; i++) {
 		try {
-			console.log(`API ${i + 1} (${apiMethods[i].name}) 시도 중...`)
 			const priceData = await apiMethods[i].func()
 
 			if (priceData && priceData.price > 0) {
 				const price = Math.round(priceData.price)
-				console.log(`API ${i + 1} (${apiMethods[i].name}) 성공: ₩${price.toLocaleString()}`)
 
 				// 히스토리 데이터 처리 (최근 5일만)
 				let history = []
@@ -66,7 +62,6 @@ export async function fetchKakaoPrice() {
 	const basePrice = 51400  // 2024년 카카오 주가 기준으로 업데이트
 	const variation = Math.floor(Math.random() * 4000) - 2000 // ±2000원 변동
 	const estimatedPrice = basePrice + variation
-	console.log('추정 주가 사용:', estimatedPrice)
 
 	const history = [
 		{
@@ -99,7 +94,6 @@ function getDateString(dayOffset) {
  * @returns {Promise<{price: number, history: Array}>} 주가 정보 객체
  */
 export async function fetchFromYahooFinance() {
-	console.log('Yahoo Finance API 시도...')
 
 	// 타임아웃 설정
 	const controller = new AbortController()
@@ -129,7 +123,6 @@ export async function fetchFromYahooFinance() {
 		}
 
 		const data = await response.json()
-		console.log('Yahoo Finance 응답:', data)
 
 		if (data.chart?.result?.[0]?.meta) {
 			const result = data.chart.result[0]
@@ -147,7 +140,6 @@ export async function fetchFromYahooFinance() {
 						time: new Date(timestamp * 1000),
 						price: prices[index] || price,
 					}))
-					console.log('Yahoo Finance 히스토리:', history.length, '개 항목 (최근 5일)')
 				}
 
 				return { price, history }
@@ -166,7 +158,6 @@ export async function fetchFromYahooFinance() {
  * @returns {Promise<{price: number, history: Array}>} 주가 정보 객체
  */
 export async function fetchFromAlternativeAPI() {
-	console.log('대체 API 시도...')
 
 	// Yahoo Finance quote 엔드포인트 시도
 	const response = await fetch(
@@ -185,7 +176,6 @@ export async function fetchFromAlternativeAPI() {
 	}
 
 	const data = await response.json()
-	console.log('대체 API 응답:', data)
 
 	if (data.quoteResponse?.result?.[0]?.regularMarketPrice) {
 		const price = data.quoteResponse.result[0].regularMarketPrice
@@ -200,7 +190,6 @@ export async function fetchFromAlternativeAPI() {
  * @returns {Promise<{price: number, history: Array}>} 주가 정보 객체
  */
 export async function fetchFromNaverFinance() {
-	console.log('네이버 금융 API 시도...')
 
 	// 타임아웃 설정
 	const controller = new AbortController()
@@ -230,7 +219,6 @@ export async function fetchFromNaverFinance() {
 		}
 
 		const data = await response.json()
-		console.log('네이버 금융 API 응답:', data)
 
 		// 네이버 금융 응답 파싱
 		if (data.datas && data.datas.length > 0) {

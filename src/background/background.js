@@ -1,5 +1,4 @@
 // 백그라운드 서비스 워커
-console.log('영차영차 Background Script 시작됨')
 
 // 전역 변수
 let currentSettings = {}
@@ -49,7 +48,6 @@ function getDateString(dayOffset) {
 
 // 설치 시 초기화
 chrome.runtime.onInstalled.addListener(async () => {
-	console.log('영차영차 설치됨')
 
 	// 기본 설정값 설정
 	const defaultSettings = {
@@ -86,7 +84,6 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 
 // 메시지 처리
 chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
-	console.log('메시지 수신:', request)
 
 	switch (request.action) {
 		case 'updateSettings':
@@ -109,7 +106,6 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
 			
 		case 'updateWidget':
 			// 팝업에서 온 위젯 업데이트 요청 처리
-			console.log('팝업에서 위젯 업데이트 요청:', request)
 			
 			// 현재 가격 업데이트
 			if (request.price) {
@@ -132,13 +128,11 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
 	}
 })
 
-// 가격 조회 및 업데이트 (여러 API 시도) - KRX 우선
+// 가격 조회 및 업데이트 (여러 API 시도)
 async function fetchAndUpdatePrice() {
-	console.log('주가 업데이트 시작...')
 
 	// 시장 시간 체크 - 시장이 닫혀있으면 API 호출 건너뛰기
 	if (!isKoreanMarketOpen()) {
-		console.log('한국 주식 시장 시간 외 - API 호출 건너뛰기')
 		
 		// 배지는 기존 데이터로 업데이트
 		if (currentPrice > 0) {
@@ -157,7 +151,6 @@ async function fetchAndUpdatePrice() {
 
 	for (let i = 0; i < apiMethods.length; i++) {
 		try {
-			console.log(`Background API ${i + 1} (${apiMethods[i].name}) 시도 중...`)
 			const price = await apiMethods[i].func()
 
 			if (price && price > 0) {
@@ -165,7 +158,6 @@ async function fetchAndUpdatePrice() {
 				const priceChanged = currentPrice !== price
 				currentPrice = Math.round(price)
 
-				console.log(`Background API ${i + 1} (${apiMethods[i].name}) 성공: ₩${currentPrice.toLocaleString()}`)
 
 				// 배지 업데이트
 				await updateBadge()
@@ -204,7 +196,6 @@ async function fetchAndUpdatePrice() {
 		const basePrice = 51400  // 2024년 카카오 주가 기준으로 업데이트
 		const variation = Math.floor(Math.random() * 4000) - 2000
 		currentPrice = basePrice + variation
-		console.log('Background 추정 주가 사용:', currentPrice)
 		await updateBadge()
 	}
 
@@ -407,12 +398,10 @@ chrome.storage.onChanged.addListener(async (changes, namespace) => {
 	if (namespace === 'sync') {
 		if (changes.settings) {
 			currentSettings = changes.settings.newValue || {}
-			console.log('설정 업데이트됨:', currentSettings)
 		}
 
 		if (changes.userData) {
 			userData = changes.userData.newValue || {}
-			console.log('사용자 데이터 업데이트됨:', userData)
 
 			// 위젯 업데이트
 			if (currentSettings.enableWidget) {
@@ -451,7 +440,6 @@ chrome.notifications.onClicked.addListener((notificationId) => {
 
 // 강제 가격 조회 및 업데이트 (시장 시간 무시) - KRX 우선
 async function fetchAndUpdatePriceForced() {
-	console.log('강제 주가 업데이트 시작... (시장 시간 무시)')
 
 	// API 시도 순서 - Yahoo Finance를 최우선으로 사용 (시장 시간 체크 제거된 버전)
 	const apiMethods = [
@@ -463,7 +451,6 @@ async function fetchAndUpdatePriceForced() {
 
 	for (let i = 0; i < apiMethods.length; i++) {
 		try {
-			console.log(`Background 강제 API ${i + 1} (${apiMethods[i].name}) 시도 중...`)
 			const price = await apiMethods[i].func()
 
 			if (price && price > 0) {
@@ -471,7 +458,6 @@ async function fetchAndUpdatePriceForced() {
 				const priceChanged = currentPrice !== price
 				currentPrice = Math.round(price)
 
-				console.log(`Background 강제 API ${i + 1} (${apiMethods[i].name}) 성공: ₩${currentPrice.toLocaleString()}`)
 
 				// 배지 업데이트
 				await updateBadge()
@@ -510,7 +496,6 @@ async function fetchAndUpdatePriceForced() {
 		const basePrice = 51400  // 2024년 카카오 주가 기준으로 업데이트
 		const variation = Math.floor(Math.random() * 4000) - 2000
 		currentPrice = basePrice + variation
-		console.log('Background 강제 추정 주가 사용:', currentPrice)
 		await updateBadge()
 	}
 
@@ -611,7 +596,6 @@ async function fetchFromNaverFinanceAPI() {
 		throw new Error('한국 주식 시장이 닫혀있습니다')
 	}
 
-	console.log('Background 네이버 금융 API 시도...')
 
 	const response = await fetch(
 		'https://polling.finance.naver.com/api/realtime/domestic/stock/035720',
@@ -632,7 +616,6 @@ async function fetchFromNaverFinanceAPI() {
 	}
 
 	const data = await response.json()
-	console.log('Background 네이버 금융 API 응답:', data)
 
 	// 네이버 금융 응답 파싱
 	if (data.datas && data.datas.length > 0) {
@@ -649,7 +632,6 @@ async function fetchFromNaverFinanceAPI() {
 
 // Background용 네이버 금융 API (강제 - 시장 시간 무시)
 async function fetchFromNaverFinanceAPIForced() {
-	console.log('Background 네이버 금융 API 강제 시도... (시장 시간 무시)')
 
 	const response = await fetch(
 		'https://polling.finance.naver.com/api/realtime/domestic/stock/035720',
@@ -670,7 +652,6 @@ async function fetchFromNaverFinanceAPIForced() {
 	}
 
 	const data = await response.json()
-	console.log('Background 네이버 금융 API 강제 응답:', data)
 
 	// 네이버 금융 응답 파싱
 	if (data.datas && data.datas.length > 0) {

@@ -42,7 +42,7 @@
 	},
 	"web_accessible_resources": [
 		{
-			"resources": ["src/widgets/widget.html", "src/widgets/widget.css"],
+			"resources": ["src/widget/widget.html", "src/widget/widget.css", "src/widget/widget.js"],
 			"matches": ["<all_urls>"]
 		}
 	]

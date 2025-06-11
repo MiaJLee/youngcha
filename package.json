@@ -19,7 +19,7 @@
 		"tracker",
 		"finance"
 	],
-	"author": "KakaoCommerce Team",
+	"author": "mia.ow",
 	"license": "MIT",
 	"devDependencies": {
 		"prettier": "^3.0.0",
