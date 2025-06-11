@@ -41,7 +41,7 @@ const elements = {
 	// 설정
 	enableWidget: document.getElementById('enableWidget'),
 	enableNotifications: document.getElementById('enableNotifications'),
-	targetPrice: document.getElementById('targetPrice'),
+
 	lastUpdate: document.getElementById('lastUpdate'),
 }
 
@@ -175,7 +175,7 @@ function setupEventListeners() {
 			}
 		}, 300)
 	)
-	elements.targetPrice.addEventListener('input', debounce(saveSettings, 500))
+
 
 	// 설정 변경
 	elements.enableWidget.addEventListener('change', () => {
@@ -514,7 +514,7 @@ async function loadStoredPrice() {
 					const timeStr = updateTime.toLocaleString('ko-KR')
 					
 					if (savedSource) {
-						elements.lastUpdate.textContent = `${timeStr} (제공: ${savedSource})`
+						elements.lastUpdate.innerHTML = `${timeStr}<br/>(${savedSource} 제공)`
 					} else {
 						elements.lastUpdate.textContent = timeStr
 					}
@@ -563,7 +563,6 @@ async function saveSettings() {
 	const settings = {
 		enableWidget: elements.enableWidget.checked,
 		enableNotifications: elements.enableNotifications.checked,
-		targetPrice: parseFloat(elements.targetPrice.value) || 0,
 		theme: document.documentElement.getAttribute('data-theme') || 'light',
 	}
 
@@ -588,7 +587,6 @@ async function loadSettings() {
 			const settings = result.settings
 			elements.enableWidget.checked = settings.enableWidget ?? true
 			elements.enableNotifications.checked = settings.enableNotifications ?? true
-			elements.targetPrice.value = settings.targetPrice || ''
 
 			// 테마 적용
 			if (settings.theme) {
@@ -694,10 +692,10 @@ async function refreshPrice() {
 // 마지막 업데이트 시간 표시
 function updateLastUpdate(source = '') {
 	const now = new Date()
-	const timeStr = now.toLocaleTimeString('ko-KR')
+	const timeStr = now.toLocaleString('ko-KR')
 	
 	if (source && elements.lastUpdate) {
-		elements.lastUpdate.textContent = `${timeStr} (제공: ${source})`
+		elements.lastUpdate.innerHTML = `${timeStr}<br/>(${source} 제공)`
 	} else if (elements.lastUpdate) {
 		elements.lastUpdate.textContent = timeStr
 	}

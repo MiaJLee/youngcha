@@ -21,10 +21,8 @@ export async function fetchKakaoPrice() {
 	console.log('팝업 활성화 - 주가 조회 시작...')
 	isFetchingPrice = true
 
-	// API 시도 순서 - KRX 공식 API를 최우선으로 사용
+	// API 시도 순서 - Yahoo Finance를 최우선으로 사용
 	const apiMethods = [
-		{ func: () => fetchFromKRXOfficial(), name: 'KRX 한국거래소' },
-		{ func: () => fetchFromKRXMarketData(), name: 'KRX 마켓데이터' },
 		{ func: () => fetchFromYahooFinance(), name: 'Yahoo Finance' },
 		{ func: () => fetchFromAlternativeAPI(), name: 'Yahoo Finance (대체)' },
 		{ func: () => fetchFromNaverFinance(), name: '네이버 금융' },
@@ -81,147 +79,9 @@ export async function fetchKakaoPrice() {
 	return { price: estimatedPrice, history, source: '추정값', isEstimated: true }
 }
 
-/**
- * KRX 공식 API로 카카오 주가 조회 (최우선)
- * @returns {Promise<{price: number, history: Array}>} 주가 정보 객체
- */
-export async function fetchFromKRXOfficial() {
-	console.log('KRX 공식 API 시도...')
 
-	// 타임아웃 설정
-	const controller = new AbortController()
-	const timeoutId = setTimeout(() => controller.abort(), 15000) // 15초 타임아웃
 
-	try {
-		// KRX 개별종목 시세 추이 API 사용
-		const response = await fetch(
-			'http://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd',
-			{
-				method: 'POST',
-				signal: controller.signal,
-				headers: {
-					'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-					'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-					'Accept': 'application/json, text/javascript, */*; q=0.01',
-					'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8',
-					'Cache-Control': 'no-cache',
-					'X-Requested-With': 'XMLHttpRequest',
-					'Referer': 'http://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0201020101'
-				},
-			},
-			{
-				body: new URLSearchParams({
-					bld: 'dbms/MDC/STAT/standard/MDCSTAT01501',
-					isuCd: 'KR7035720002',  // 카카오 ISIN 코드
-					strtDd: getDateString(-30),  // 30일 전부터
-					endDd: getDateString(0),     // 오늘까지
-					share: '1',
-					money: '1'
-				})
-			}
-		)
 
-		clearTimeout(timeoutId)
-
-		if (!response.ok) {
-			throw new Error(`KRX API HTTP ${response.status}: ${response.statusText}`)
-		}
-
-		const data = await response.json()
-		console.log('KRX 공식 API 응답:', data)
-
-		// KRX API 응답 데이터 파싱
-		if (data.OutBlock_1 && data.OutBlock_1.length > 0) {
-			const latestData = data.OutBlock_1[0]  // 가장 최근 데이터
-			const price = parseInt(latestData.TDD_CLSPRC?.replace(/,/g, '') || latestData.CLSPRC?.replace(/,/g, ''))
-
-			if (price && price > 0) {
-				// 히스토리 데이터 생성 (최근 5일)
-				const history = data.OutBlock_1.slice(0, 5).map(item => ({
-					time: new Date(item.TRD_DD),
-					price: parseInt(item.TDD_CLSPRC?.replace(/,/g, '') || item.CLSPRC?.replace(/,/g, ''))
-				})).reverse()  // 시간순으로 정렬
-
-				console.log('KRX 공식 API 히스토리:', history.length, '개 항목')
-				return { price, history }
-			}
-		}
-
-		throw new Error('KRX 공식 API: 유효한 가격 데이터 없음')
-	} catch (error) {
-		clearTimeout(timeoutId)
-		throw error
-	}
-}
-
-/**
- * KRX 마켓데이터 API로 카카오 주가 조회 (2순위)
- * @returns {Promise<{price: number, history: Array}>} 주가 정보 객체
- */
-export async function fetchFromKRXMarketData() {
-	console.log('KRX 마켓데이터 API 시도...')
-
-	// 타임아웃 설정
-	const controller = new AbortController()
-	const timeoutId = setTimeout(() => controller.abort(), 15000) // 15초 타임아웃
-
-	try {
-		// KRX 전종목 시세 API 사용
-		const response = await fetch(
-			'http://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd',
-			{
-				method: 'POST',
-				signal: controller.signal,
-				headers: {
-					'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-					'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-					'Accept': 'application/json, text/javascript, */*; q=0.01',
-					'Accept-Language': 'ko-KR,ko;q=0.9',
-					'X-Requested-With': 'XMLHttpRequest',
-					'Referer': 'http://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0201020101'
-				},
-				body: new URLSearchParams({
-					bld: 'dbms/MDC/STAT/standard/MDCSTAT01501',
-					mktId: 'STK',  // 주식시장
-					trdDd: getDateString(0),  // 오늘 날짜
-					isuCd: '035720',  // 카카오 종목코드
-					isuCd2: 'KR7035720002'  // 카카오 ISIN 코드
-				})
-			}
-		)
-
-		clearTimeout(timeoutId)
-
-		if (!response.ok) {
-			throw new Error(`KRX 마켓데이터 HTTP ${response.status}: ${response.statusText}`)
-		}
-
-		const data = await response.json()
-		console.log('KRX 마켓데이터 API 응답:', data)
-
-		// KRX 마켓데이터 응답 파싱
-		if (data.output && data.output.length > 0) {
-			const kakaoData = data.output.find(item => 
-				item.ISU_SRT_CD === '035720' || 
-				item.ISU_CD === 'KR7035720002' ||
-				item.ISU_ABBRV === '카카오'
-			)
-
-			if (kakaoData) {
-				const price = parseInt(kakaoData.TDD_CLSPRC?.replace(/,/g, '') || kakaoData.CLSPRC?.replace(/,/g, ''))
-
-				if (price && price > 0) {
-					return { price, history: [] }
-				}
-			}
-		}
-
-		throw new Error('KRX 마켓데이터: 카카오 데이터를 찾을 수 없음')
-	} catch (error) {
-		clearTimeout(timeoutId)
-		throw error
-	}
-}
 
 /**
  * 날짜 문자열 생성 헬퍼 함수
