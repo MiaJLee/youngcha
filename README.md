@@ -79,7 +79,7 @@
 - **Frontend**: Vanilla JavaScript (ES6+ Modules), HTML5, CSS3
 - **Architecture**: ES6 Import/Export, Modular Design
 - **Charts**: Custom Canvas-based Charts
-- **API**: Yahoo Finance API (Multi-endpoint fallback)
+- **API**: KRX 공식 API 우선, Yahoo Finance API, 네이버 금융 API (Multi-endpoint fallback)
 - **Storage**: Chrome Storage API
 - **Notifications**: Chrome Notifications API
 - **Permissions**: Storage, Notifications, Alarms, ActiveTab
@@ -143,11 +143,24 @@ youngcha/
 
 ## 🔑 주요 API
 
-### 주가 조회
+### 주가 조회 (API 우선순위)
 
 ```javascript
-// Yahoo Finance API 사용
-const response = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/035720.KS')
+// 1순위: KRX 공식 API (한국거래소)
+const krxResponse = await fetch('http://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd', {
+	method: 'POST',
+	body: new URLSearchParams({
+		bld: 'dbms/MDC/STAT/standard/MDCSTAT01501',
+		isuCd: 'KR7035720002'  // 카카오 ISIN 코드
+	})
+})
+
+// 2순위: KRX 마켓데이터 API (백업)
+// 3순위: Yahoo Finance API (백업)
+const yahooResponse = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/035720.KS')
+
+// 4순위: 네이버 금융 API (백업)
+const naverResponse = await fetch('https://polling.finance.naver.com/api/realtime/domestic/stock/035720')
 ```
 
 ### 목표가 계산

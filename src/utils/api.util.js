@@ -9,7 +9,7 @@ let isFetchingPrice = false
 // 카카오 주가 조회 (여러 API 시도)
 /**
  * 카카오 주가 조회 (여러 API 시도)
- * @returns {Promise<{price: number, history: Array, isEstimated?: boolean}>} 주가 정보 객체
+ * @returns {Promise<{price: number, history: Array, source: string, isEstimated?: boolean}>} 주가 정보 객체
  */
 export async function fetchKakaoPrice() {
 	// 이미 API 호출 중이면 스킵
@@ -21,21 +21,23 @@ export async function fetchKakaoPrice() {
 	console.log('팝업 활성화 - 주가 조회 시작...')
 	isFetchingPrice = true
 
-	// API 시도 순서
+	// API 시도 순서 - KRX 공식 API를 최우선으로 사용
 	const apiMethods = [
-		() => fetchFromYahooFinance(),
-		() => fetchFromAlternativeAPI(),
-		() => fetchFromNaverFinance(),
+		{ func: () => fetchFromKRXOfficial(), name: 'KRX 한국거래소' },
+		{ func: () => fetchFromKRXMarketData(), name: 'KRX 마켓데이터' },
+		{ func: () => fetchFromYahooFinance(), name: 'Yahoo Finance' },
+		{ func: () => fetchFromAlternativeAPI(), name: 'Yahoo Finance (대체)' },
+		{ func: () => fetchFromNaverFinance(), name: '네이버 금융' },
 	]
 
 	for (let i = 0; i < apiMethods.length; i++) {
 		try {
-			console.log(`API ${i + 1} 시도 중...`)
-			const priceData = await apiMethods[i]()
+			console.log(`API ${i + 1} (${apiMethods[i].name}) 시도 중...`)
+			const priceData = await apiMethods[i].func()
 
 			if (priceData && priceData.price > 0) {
 				const price = Math.round(priceData.price)
-				console.log(`API ${i + 1} 성공: ₩${price.toLocaleString()}`)
+				console.log(`API ${i + 1} (${apiMethods[i].name}) 성공: ₩${price.toLocaleString()}`)
 
 				// 히스토리 데이터 처리 (최근 5일만)
 				let history = []
@@ -51,10 +53,10 @@ export async function fetchKakaoPrice() {
 				}
 
 				isFetchingPrice = false
-				return { price, history }
+				return { price, history, source: apiMethods[i].name }
 			}
 		} catch (error) {
-			console.warn(`API ${i + 1} 실패:`, error.message)
+			console.warn(`API ${i + 1} (${apiMethods[i].name}) 실패:`, error.message)
 			continue // 다음 API 시도
 		}
 	}
@@ -63,8 +65,8 @@ export async function fetchKakaoPrice() {
 	console.error('모든 주가 API 실패, 추정값 사용')
 
 	// 2024년 카카오 주가 범위를 고려한 현실적인 값
-	const basePrice = 98000
-	const variation = Math.floor(Math.random() * 6000) - 3000 // ±3000원 변동
+	const basePrice = 51400  // 2024년 카카오 주가 기준으로 업데이트
+	const variation = Math.floor(Math.random() * 4000) - 2000 // ±2000원 변동
 	const estimatedPrice = basePrice + variation
 	console.log('추정 주가 사용:', estimatedPrice)
 
@@ -76,7 +78,160 @@ export async function fetchKakaoPrice() {
 	]
 
 	isFetchingPrice = false
-	return { price: estimatedPrice, history, isEstimated: true }
+	return { price: estimatedPrice, history, source: '추정값', isEstimated: true }
+}
+
+/**
+ * KRX 공식 API로 카카오 주가 조회 (최우선)
+ * @returns {Promise<{price: number, history: Array}>} 주가 정보 객체
+ */
+export async function fetchFromKRXOfficial() {
+	console.log('KRX 공식 API 시도...')
+
+	// 타임아웃 설정
+	const controller = new AbortController()
+	const timeoutId = setTimeout(() => controller.abort(), 15000) // 15초 타임아웃
+
+	try {
+		// KRX 개별종목 시세 추이 API 사용
+		const response = await fetch(
+			'http://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd',
+			{
+				method: 'POST',
+				signal: controller.signal,
+				headers: {
+					'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+					'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+					'Accept': 'application/json, text/javascript, */*; q=0.01',
+					'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8',
+					'Cache-Control': 'no-cache',
+					'X-Requested-With': 'XMLHttpRequest',
+					'Referer': 'http://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0201020101'
+				},
+			},
+			{
+				body: new URLSearchParams({
+					bld: 'dbms/MDC/STAT/standard/MDCSTAT01501',
+					isuCd: 'KR7035720002',  // 카카오 ISIN 코드
+					strtDd: getDateString(-30),  // 30일 전부터
+					endDd: getDateString(0),     // 오늘까지
+					share: '1',
+					money: '1'
+				})
+			}
+		)
+
+		clearTimeout(timeoutId)
+
+		if (!response.ok) {
+			throw new Error(`KRX API HTTP ${response.status}: ${response.statusText}`)
+		}
+
+		const data = await response.json()
+		console.log('KRX 공식 API 응답:', data)
+
+		// KRX API 응답 데이터 파싱
+		if (data.OutBlock_1 && data.OutBlock_1.length > 0) {
+			const latestData = data.OutBlock_1[0]  // 가장 최근 데이터
+			const price = parseInt(latestData.TDD_CLSPRC?.replace(/,/g, '') || latestData.CLSPRC?.replace(/,/g, ''))
+
+			if (price && price > 0) {
+				// 히스토리 데이터 생성 (최근 5일)
+				const history = data.OutBlock_1.slice(0, 5).map(item => ({
+					time: new Date(item.TRD_DD),
+					price: parseInt(item.TDD_CLSPRC?.replace(/,/g, '') || item.CLSPRC?.replace(/,/g, ''))
+				})).reverse()  // 시간순으로 정렬
+
+				console.log('KRX 공식 API 히스토리:', history.length, '개 항목')
+				return { price, history }
+			}
+		}
+
+		throw new Error('KRX 공식 API: 유효한 가격 데이터 없음')
+	} catch (error) {
+		clearTimeout(timeoutId)
+		throw error
+	}
+}
+
+/**
+ * KRX 마켓데이터 API로 카카오 주가 조회 (2순위)
+ * @returns {Promise<{price: number, history: Array}>} 주가 정보 객체
+ */
+export async function fetchFromKRXMarketData() {
+	console.log('KRX 마켓데이터 API 시도...')
+
+	// 타임아웃 설정
+	const controller = new AbortController()
+	const timeoutId = setTimeout(() => controller.abort(), 15000) // 15초 타임아웃
+
+	try {
+		// KRX 전종목 시세 API 사용
+		const response = await fetch(
+			'http://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd',
+			{
+				method: 'POST',
+				signal: controller.signal,
+				headers: {
+					'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+					'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+					'Accept': 'application/json, text/javascript, */*; q=0.01',
+					'Accept-Language': 'ko-KR,ko;q=0.9',
+					'X-Requested-With': 'XMLHttpRequest',
+					'Referer': 'http://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0201020101'
+				},
+				body: new URLSearchParams({
+					bld: 'dbms/MDC/STAT/standard/MDCSTAT01501',
+					mktId: 'STK',  // 주식시장
+					trdDd: getDateString(0),  // 오늘 날짜
+					isuCd: '035720',  // 카카오 종목코드
+					isuCd2: 'KR7035720002'  // 카카오 ISIN 코드
+				})
+			}
+		)
+
+		clearTimeout(timeoutId)
+
+		if (!response.ok) {
+			throw new Error(`KRX 마켓데이터 HTTP ${response.status}: ${response.statusText}`)
+		}
+
+		const data = await response.json()
+		console.log('KRX 마켓데이터 API 응답:', data)
+
+		// KRX 마켓데이터 응답 파싱
+		if (data.output && data.output.length > 0) {
+			const kakaoData = data.output.find(item => 
+				item.ISU_SRT_CD === '035720' || 
+				item.ISU_CD === 'KR7035720002' ||
+				item.ISU_ABBRV === '카카오'
+			)
+
+			if (kakaoData) {
+				const price = parseInt(kakaoData.TDD_CLSPRC?.replace(/,/g, '') || kakaoData.CLSPRC?.replace(/,/g, ''))
+
+				if (price && price > 0) {
+					return { price, history: [] }
+				}
+			}
+		}
+
+		throw new Error('KRX 마켓데이터: 카카오 데이터를 찾을 수 없음')
+	} catch (error) {
+		clearTimeout(timeoutId)
+		throw error
+	}
+}
+
+/**
+ * 날짜 문자열 생성 헬퍼 함수
+ * @param {number} dayOffset - 오늘로부터 며칠 전/후 (음수: 이전, 양수: 이후)
+ * @returns {string} YYYYMMDD 형식의 날짜 문자열
+ */
+function getDateString(dayOffset) {
+	const date = new Date()
+	date.setDate(date.getDate() + dayOffset)
+	return date.toISOString().slice(0, 10).replace(/-/g, '')
 }
 
 /**
@@ -181,46 +336,57 @@ export async function fetchFromAlternativeAPI() {
 }
 
 /**
- * 네이버 금융 크롤링 시뮬레이션 (실제로는 Yahoo Finance 검색 API 사용)
+ * 네이버 금융 API로 카카오 주가 조회 (5순위)
  * @returns {Promise<{price: number, history: Array}>} 주가 정보 객체
  */
 export async function fetchFromNaverFinance() {
 	console.log('네이버 금융 API 시도...')
 
-	// 실제로는 CORS 때문에 직접 크롤링 불가능하지만,
-	// 여기서는 또 다른 Yahoo Finance 변형 시도
-	const response = await fetch(
-		'https://query2.finance.yahoo.com/v1/finance/search?q=KAKAO&quotesCount=1&newsCount=0',
-		{
-			method: 'GET',
-			headers: {
-				'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_7_1 like Mac OS X) AppleWebKit/605.1.15',
-			},
-		}
-	)
+	// 타임아웃 설정
+	const controller = new AbortController()
+	const timeoutId = setTimeout(() => controller.abort(), 15000) // 15초 타임아웃
 
-	if (!response.ok) {
-		throw new Error(`네이버 API HTTP ${response.status}`)
-	}
-
-	const data = await response.json()
-	console.log('네이버 API 응답:', data)
-
-	// 검색 결과에서 카카오 찾기
-	if (data.quotes && data.quotes.length > 0) {
-		const kakaoQuote = data.quotes.find(
-			(quote) =>
-				quote.symbol === '035720.KS' ||
-				quote.shortname?.includes('Kakao') ||
-				quote.longname?.includes('Kakao')
+	try {
+		// 네이버 금융 API 사용
+		const response = await fetch(
+			'https://polling.finance.naver.com/api/realtime/domestic/stock/035720',
+			{
+				method: 'GET',
+				signal: controller.signal,
+				headers: {
+					'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+					'Accept': 'application/json, text/javascript, */*; q=0.01',
+					'Accept-Language': 'ko-KR,ko;q=0.9',
+					'Cache-Control': 'no-cache',
+					'Referer': 'https://finance.naver.com/item/main.naver?code=035720'
+				}
+			}
 		)
 
-		if (kakaoQuote && kakaoQuote.regularMarketPrice) {
-			return { price: kakaoQuote.regularMarketPrice, history: [] }
-		}
-	}
+		clearTimeout(timeoutId)
 
-	throw new Error('네이버 API: 카카오 주식 정보 없음')
+		if (!response.ok) {
+			throw new Error(`네이버 금융 HTTP ${response.status}: ${response.statusText}`)
+		}
+
+		const data = await response.json()
+		console.log('네이버 금융 API 응답:', data)
+
+		// 네이버 금융 응답 파싱
+		if (data.datas && data.datas.length > 0) {
+			const kakaoData = data.datas[0]
+			const price = parseInt(kakaoData.nv?.replace(/,/g, '') || kakaoData.cv?.replace(/,/g, ''))
+
+			if (price && price > 0) {
+				return { price, history: [] }
+			}
+		}
+
+		throw new Error('네이버 금융: 유효한 가격 데이터 없음')
+	} catch (error) {
+		clearTimeout(timeoutId)
+		throw error
+	}
 }
 
 /**

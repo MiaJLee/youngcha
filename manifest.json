@@ -5,6 +5,9 @@
 	"description": "카카오 RSU 실시간 자산 조회 및 동기부여 위젯",
 	"permissions": ["storage", "notifications", "alarms", "activeTab"],
 	"host_permissions": [
+		"http://data.krx.co.kr/*",
+		"https://data.krx.co.kr/*",
+		"https://polling.finance.naver.com/*",
 		"https://yfapi.net/*",
 		"https://query1.finance.yahoo.com/*",
 		"https://query2.finance.yahoo.com/*",

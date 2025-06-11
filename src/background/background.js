@@ -36,6 +36,17 @@ function isKoreanMarketOpen() {
 	return currentTime >= marketOpen && currentTime <= marketClose
 }
 
+/**
+ * 날짜 문자열 생성 헬퍼 함수
+ * @param {number} dayOffset - 오늘로부터 며칠 전/후 (음수: 이전, 양수: 이후)
+ * @returns {string} YYYYMMDD 형식의 날짜 문자열
+ */
+function getDateString(dayOffset) {
+	const date = new Date()
+	date.setDate(date.getDate() + dayOffset)
+	return date.toISOString().slice(0, 10).replace(/-/g, '')
+}
+
 // 설치 시 초기화
 chrome.runtime.onInstalled.addListener(async () => {
 	console.log('영차영차 설치됨')
@@ -100,7 +111,7 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
 	}
 })
 
-// 가격 조회 및 업데이트 (여러 API 시도)
+// 가격 조회 및 업데이트 (여러 API 시도) - KRX 우선
 async function fetchAndUpdatePrice() {
 	console.log('주가 업데이트 시작...')
 
@@ -115,24 +126,27 @@ async function fetchAndUpdatePrice() {
 		return false
 	}
 
-	// API 시도 순서
+	// API 시도 순서 - KRX 공식 API를 최우선으로 사용
 	const apiMethods = [
-		() => fetchFromYahooFinanceAPI(),
-		() => fetchFromAlternativeYahooAPI(),
-		() => fetchFromSearchAPI(),
+		{ func: () => fetchFromKRXOfficialAPI(), name: 'KRX 한국거래소' },
+		{ func: () => fetchFromKRXMarketDataAPI(), name: 'KRX 마켓데이터' },
+		{ func: () => fetchFromYahooFinanceAPI(), name: 'Yahoo Finance' },
+		{ func: () => fetchFromAlternativeYahooAPI(), name: 'Yahoo Finance (대체)' },
+		{ func: () => fetchFromSearchAPI(), name: 'Yahoo Finance (검색)' },
+		{ func: () => fetchFromNaverFinanceAPI(), name: '네이버 금융' },
 	]
 
 	for (let i = 0; i < apiMethods.length; i++) {
 		try {
-			console.log(`Background API ${i + 1} 시도 중...`)
-			const price = await apiMethods[i]()
+			console.log(`Background API ${i + 1} (${apiMethods[i].name}) 시도 중...`)
+			const price = await apiMethods[i].func()
 
 			if (price && price > 0) {
 				// 가격 변동 체크
 				const priceChanged = currentPrice !== price
 				currentPrice = Math.round(price)
 
-				console.log(`Background API ${i + 1} 성공: ₩${currentPrice.toLocaleString()}`)
+				console.log(`Background API ${i + 1} (${apiMethods[i].name}) 성공: ₩${currentPrice.toLocaleString()}`)
 
 				// 배지 업데이트
 				await updateBadge()
@@ -142,12 +156,13 @@ async function fetchAndUpdatePrice() {
 					await updateWidget()
 				}
 
-				// 팝업이 열려있으면 가격 업데이트 알림
+				// 팝업이 열려있으면 가격 업데이트 알림 (API 소스 포함)
 				if (priceChanged) {
 					chrome.runtime
 						.sendMessage({
 							action: 'priceUpdated',
 							price: currentPrice,
+							source: apiMethods[i].name,
 						})
 						.catch(() => {
 							// 팝업이 열려있지 않으면 무시
@@ -157,7 +172,7 @@ async function fetchAndUpdatePrice() {
 				return true // 성공하면 즉시 반환
 			}
 		} catch (error) {
-			console.warn(`Background API ${i + 1} 실패:`, error.message)
+			console.warn(`Background API ${i + 1} (${apiMethods[i].name}) 실패:`, error.message)
 			continue // 다음 API 시도
 		}
 	}
@@ -167,14 +182,123 @@ async function fetchAndUpdatePrice() {
 
 	// 현재 가격이 0이면 추정값 사용
 	if (currentPrice === 0) {
-		const basePrice = 98000
-		const variation = Math.floor(Math.random() * 6000) - 3000
+		const basePrice = 51400  // 2024년 카카오 주가 기준으로 업데이트
+		const variation = Math.floor(Math.random() * 4000) - 2000
 		currentPrice = basePrice + variation
 		console.log('Background 추정 주가 사용:', currentPrice)
 		await updateBadge()
 	}
 
 	return false
+}
+
+// Background용 KRX 공식 API (최우선)
+async function fetchFromKRXOfficialAPI() {
+	if (!isKoreanMarketOpen()) {
+		throw new Error('한국 주식 시장이 닫혀있습니다')
+	}
+
+	console.log('Background KRX 공식 API 시도...')
+
+	const response = await fetch(
+		'http://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd',
+		{
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+				'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+				'Accept': 'application/json, text/javascript, */*; q=0.01',
+				'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8',
+				'Cache-Control': 'no-cache',
+				'X-Requested-With': 'XMLHttpRequest',
+				'Referer': 'http://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0201020101'
+			},
+			body: new URLSearchParams({
+				bld: 'dbms/MDC/STAT/standard/MDCSTAT01501',
+				isuCd: 'KR7035720002',  // 카카오 ISIN 코드
+				strtDd: getDateString(-1),  // 어제부터
+				endDd: getDateString(0),    // 오늘까지
+				share: '1',
+				money: '1'
+			})
+		}
+	)
+
+	if (!response.ok) {
+		throw new Error(`KRX API HTTP ${response.status}: ${response.statusText}`)
+	}
+
+	const data = await response.json()
+	console.log('Background KRX 공식 API 응답:', data)
+
+	// KRX API 응답 데이터 파싱
+	if (data.OutBlock_1 && data.OutBlock_1.length > 0) {
+		const latestData = data.OutBlock_1[0]  // 가장 최근 데이터
+		const price = parseInt(latestData.TDD_CLSPRC?.replace(/,/g, '') || latestData.CLSPRC?.replace(/,/g, ''))
+
+		if (price && price > 0) {
+			return price
+		}
+	}
+
+	throw new Error('KRX 공식 API: 유효한 가격 데이터 없음')
+}
+
+// Background용 KRX 마켓데이터 API (2순위)
+async function fetchFromKRXMarketDataAPI() {
+	if (!isKoreanMarketOpen()) {
+		throw new Error('한국 주식 시장이 닫혀있습니다')
+	}
+
+	console.log('Background KRX 마켓데이터 API 시도...')
+
+	const response = await fetch(
+		'http://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd',
+		{
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+				'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+				'Accept': 'application/json, text/javascript, */*; q=0.01',
+				'Accept-Language': 'ko-KR,ko;q=0.9',
+				'X-Requested-With': 'XMLHttpRequest',
+				'Referer': 'http://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0201020101'
+			},
+			body: new URLSearchParams({
+				bld: 'dbms/MDC/STAT/standard/MDCSTAT01501',
+				mktId: 'STK',  // 주식시장
+				trdDd: getDateString(0),  // 오늘 날짜
+				isuCd: '035720',  // 카카오 종목코드
+				isuCd2: 'KR7035720002'  // 카카오 ISIN 코드
+			})
+		}
+	)
+
+	if (!response.ok) {
+		throw new Error(`KRX 마켓데이터 HTTP ${response.status}: ${response.statusText}`)
+	}
+
+	const data = await response.json()
+	console.log('Background KRX 마켓데이터 API 응답:', data)
+
+	// KRX 마켓데이터 응답 파싱
+	if (data.output && data.output.length > 0) {
+		const kakaoData = data.output.find(item => 
+			item.ISU_SRT_CD === '035720' || 
+			item.ISU_CD === 'KR7035720002' ||
+			item.ISU_ABBRV === '카카오'
+		)
+
+		if (kakaoData) {
+			const price = parseInt(kakaoData.TDD_CLSPRC?.replace(/,/g, '') || kakaoData.CLSPRC?.replace(/,/g, ''))
+
+			if (price && price > 0) {
+				return price
+			}
+		}
+	}
+
+	throw new Error('KRX 마켓데이터: 카카오 데이터를 찾을 수 없음')
 }
 
 // Background용 Yahoo Finance API
@@ -205,12 +329,13 @@ async function fetchFromYahooFinanceAPI() {
 	if (data.chart?.result?.[0]?.meta) {
 		const meta = data.chart.result[0].meta
 		const price = meta.regularMarketPrice || meta.previousClose
+
 		if (price && price > 0) {
 			return price
 		}
 	}
 
-	throw new Error('유효한 가격 데이터 없음')
+	throw new Error('Yahoo Finance Background: 유효한 가격 데이터 없음')
 }
 
 // Background용 대체 Yahoo API
@@ -431,28 +556,31 @@ chrome.notifications.onClicked.addListener((notificationId) => {
 	chrome.action.openPopup()
 })
 
-// 강제 가격 조회 및 업데이트 (시장 시간 무시)
+// 강제 가격 조회 및 업데이트 (시장 시간 무시) - KRX 우선
 async function fetchAndUpdatePriceForced() {
 	console.log('강제 주가 업데이트 시작... (시장 시간 무시)')
 
-	// API 시도 순서 (시장 시간 체크 제거된 버전)
+	// API 시도 순서 - KRX 공식 API를 최우선으로 사용 (시장 시간 체크 제거된 버전)
 	const apiMethods = [
-		() => fetchFromYahooFinanceAPIForced(),
-		() => fetchFromAlternativeYahooAPIForced(),
-		() => fetchFromSearchAPIForced(),
+		{ func: () => fetchFromKRXOfficialAPIForced(), name: 'KRX 한국거래소' },
+		{ func: () => fetchFromKRXMarketDataAPIForced(), name: 'KRX 마켓데이터' },
+		{ func: () => fetchFromYahooFinanceAPIForced(), name: 'Yahoo Finance' },
+		{ func: () => fetchFromAlternativeYahooAPIForced(), name: 'Yahoo Finance (대체)' },
+		{ func: () => fetchFromSearchAPIForced(), name: 'Yahoo Finance (검색)' },
+		{ func: () => fetchFromNaverFinanceAPIForced(), name: '네이버 금융' },
 	]
 
 	for (let i = 0; i < apiMethods.length; i++) {
 		try {
-			console.log(`Background 강제 API ${i + 1} 시도 중...`)
-			const price = await apiMethods[i]()
+			console.log(`Background 강제 API ${i + 1} (${apiMethods[i].name}) 시도 중...`)
+			const price = await apiMethods[i].func()
 
 			if (price && price > 0) {
 				// 가격 변동 체크
 				const priceChanged = currentPrice !== price
 				currentPrice = Math.round(price)
 
-				console.log(`Background 강제 API ${i + 1} 성공: ₩${currentPrice.toLocaleString()}`)
+				console.log(`Background 강제 API ${i + 1} (${apiMethods[i].name}) 성공: ₩${currentPrice.toLocaleString()}`)
 
 				// 배지 업데이트
 				await updateBadge()
@@ -462,12 +590,13 @@ async function fetchAndUpdatePriceForced() {
 					await updateWidget()
 				}
 
-				// 팝업이 열려있으면 가격 업데이트 알림
+				// 팝업이 열려있으면 가격 업데이트 알림 (API 소스 포함)
 				if (priceChanged) {
 					chrome.runtime
 						.sendMessage({
 							action: 'priceUpdated',
 							price: currentPrice,
+							source: apiMethods[i].name,
 						})
 						.catch(() => {
 							// 팝업이 열려있지 않으면 무시
@@ -477,7 +606,7 @@ async function fetchAndUpdatePriceForced() {
 				return true // 성공하면 즉시 반환
 			}
 		} catch (error) {
-			console.warn(`Background 강제 API ${i + 1} 실패:`, error.message)
+			console.warn(`Background 강제 API ${i + 1} (${apiMethods[i].name}) 실패:`, error.message)
 			continue // 다음 API 시도
 		}
 	}
@@ -487,14 +616,115 @@ async function fetchAndUpdatePriceForced() {
 
 	// 현재 가격이 0이면 추정값 사용
 	if (currentPrice === 0) {
-		const basePrice = 98000
-		const variation = Math.floor(Math.random() * 6000) - 3000
+		const basePrice = 51400  // 2024년 카카오 주가 기준으로 업데이트
+		const variation = Math.floor(Math.random() * 4000) - 2000
 		currentPrice = basePrice + variation
 		console.log('Background 강제 추정 주가 사용:', currentPrice)
 		await updateBadge()
 	}
 
 	return false
+}
+
+// Background용 KRX 공식 API (강제 - 시장 시간 무시)
+async function fetchFromKRXOfficialAPIForced() {
+	console.log('Background KRX 공식 API 강제 시도... (시장 시간 무시)')
+
+	const response = await fetch(
+		'http://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd',
+		{
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+				'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+				'Accept': 'application/json, text/javascript, */*; q=0.01',
+				'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8',
+				'Cache-Control': 'no-cache',
+				'X-Requested-With': 'XMLHttpRequest',
+				'Referer': 'http://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0201020101'
+			},
+			body: new URLSearchParams({
+				bld: 'dbms/MDC/STAT/standard/MDCSTAT01501',
+				isuCd: 'KR7035720002',  // 카카오 ISIN 코드
+				strtDd: getDateString(-1),  // 어제부터
+				endDd: getDateString(0),    // 오늘까지
+				share: '1',
+				money: '1'
+			})
+		}
+	)
+
+	if (!response.ok) {
+		throw new Error(`KRX API 강제 HTTP ${response.status}: ${response.statusText}`)
+	}
+
+	const data = await response.json()
+	console.log('Background KRX 공식 API 강제 응답:', data)
+
+	// KRX API 응답 데이터 파싱
+	if (data.OutBlock_1 && data.OutBlock_1.length > 0) {
+		const latestData = data.OutBlock_1[0]  // 가장 최근 데이터
+		const price = parseInt(latestData.TDD_CLSPRC?.replace(/,/g, '') || latestData.CLSPRC?.replace(/,/g, ''))
+
+		if (price && price > 0) {
+			return price
+		}
+	}
+
+	throw new Error('KRX 공식 API 강제: 유효한 가격 데이터 없음')
+}
+
+// Background용 KRX 마켓데이터 API (강제 - 시장 시간 무시)
+async function fetchFromKRXMarketDataAPIForced() {
+	console.log('Background KRX 마켓데이터 API 강제 시도... (시장 시간 무시)')
+
+	const response = await fetch(
+		'http://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd',
+		{
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+				'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+				'Accept': 'application/json, text/javascript, */*; q=0.01',
+				'Accept-Language': 'ko-KR,ko;q=0.9',
+				'X-Requested-With': 'XMLHttpRequest',
+				'Referer': 'http://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0201020101'
+			},
+			body: new URLSearchParams({
+				bld: 'dbms/MDC/STAT/standard/MDCSTAT01501',
+				mktId: 'STK',  // 주식시장
+				trdDd: getDateString(0),  // 오늘 날짜
+				isuCd: '035720',  // 카카오 종목코드
+				isuCd2: 'KR7035720002'  // 카카오 ISIN 코드
+			})
+		}
+	)
+
+	if (!response.ok) {
+		throw new Error(`KRX 마켓데이터 강제 HTTP ${response.status}: ${response.statusText}`)
+	}
+
+	const data = await response.json()
+	console.log('Background KRX 마켓데이터 API 강제 응답:', data)
+
+	// KRX 마켓데이터 응답 파싱
+	if (data.output && data.output.length > 0) {
+		const kakaoData = data.output.find(item => 
+			item.ISU_SRT_CD === '035720' || 
+			item.ISU_CD === 'KR7035720002' ||
+			item.ISU_ABBRV === '카카오'
+		)
+
+		if (kakaoData) {
+			const price = parseInt(kakaoData.TDD_CLSPRC?.replace(/,/g, '') || kakaoData.CLSPRC?.replace(/,/g, ''))
+
+			if (price && price > 0) {
+				return price
+			}
+		}
+	}
+
+	throw new Error('KRX 마켓데이터 강제: 카카오 데이터를 찾을 수 없음')
 }
 
 // Background용 Yahoo Finance API (시장 시간 무시)
@@ -521,12 +751,13 @@ async function fetchFromYahooFinanceAPIForced() {
 	if (data.chart?.result?.[0]?.meta) {
 		const meta = data.chart.result[0].meta
 		const price = meta.regularMarketPrice || meta.previousClose
+
 		if (price && price > 0) {
 			return price
 		}
 	}
 
-	throw new Error('유효한 가격 데이터 없음')
+	throw new Error('Yahoo Finance 강제: 유효한 가격 데이터 없음')
 }
 
 // Background용 대체 Yahoo API (시장 시간 무시)
@@ -578,6 +809,86 @@ async function fetchFromSearchAPIForced() {
 	}
 
 	throw new Error('검색 API에서 가격 데이터 없음')
+}
+
+// Background용 네이버 금융 API
+async function fetchFromNaverFinanceAPI() {
+	if (!isKoreanMarketOpen()) {
+		throw new Error('한국 주식 시장이 닫혀있습니다')
+	}
+
+	console.log('Background 네이버 금융 API 시도...')
+
+	const response = await fetch(
+		'https://polling.finance.naver.com/api/realtime/domestic/stock/035720',
+		{
+			method: 'GET',
+			headers: {
+				'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+				'Accept': 'application/json, text/javascript, */*; q=0.01',
+				'Accept-Language': 'ko-KR,ko;q=0.9',
+				'Cache-Control': 'no-cache',
+				'Referer': 'https://finance.naver.com/item/main.naver?code=035720'
+			}
+		}
+	)
+
+	if (!response.ok) {
+		throw new Error(`네이버 금융 HTTP ${response.status}: ${response.statusText}`)
+	}
+
+	const data = await response.json()
+	console.log('Background 네이버 금융 API 응답:', data)
+
+	// 네이버 금융 응답 파싱
+	if (data.datas && data.datas.length > 0) {
+		const kakaoData = data.datas[0]
+		const price = parseInt(kakaoData.nv?.replace(/,/g, '') || kakaoData.cv?.replace(/,/g, ''))
+
+		if (price && price > 0) {
+			return price
+		}
+	}
+
+	throw new Error('네이버 금융 Background: 유효한 가격 데이터 없음')
+}
+
+// Background용 네이버 금융 API (강제 - 시장 시간 무시)
+async function fetchFromNaverFinanceAPIForced() {
+	console.log('Background 네이버 금융 API 강제 시도... (시장 시간 무시)')
+
+	const response = await fetch(
+		'https://polling.finance.naver.com/api/realtime/domestic/stock/035720',
+		{
+			method: 'GET',
+			headers: {
+				'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+				'Accept': 'application/json, text/javascript, */*; q=0.01',
+				'Accept-Language': 'ko-KR,ko;q=0.9',
+				'Cache-Control': 'no-cache',
+				'Referer': 'https://finance.naver.com/item/main.naver?code=035720'
+			}
+		}
+	)
+
+	if (!response.ok) {
+		throw new Error(`네이버 금융 강제 HTTP ${response.status}: ${response.statusText}`)
+	}
+
+	const data = await response.json()
+	console.log('Background 네이버 금융 API 강제 응답:', data)
+
+	// 네이버 금융 응답 파싱
+	if (data.datas && data.datas.length > 0) {
+		const kakaoData = data.datas[0]
+		const price = parseInt(kakaoData.nv?.replace(/,/g, '') || kakaoData.cv?.replace(/,/g, ''))
+
+		if (price && price > 0) {
+			return price
+		}
+	}
+
+	throw new Error('네이버 금융 강제: 유효한 가격 데이터 없음')
 }
 
 // 초기 실행

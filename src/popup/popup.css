@@ -480,11 +480,7 @@ button svg {
 	font-style: italic;
 }
 
-/* 차트 */
-.chart-container {
-	height: 200px;
-	position: relative;
-}
+
 
 /* 설정 */
 .settings {

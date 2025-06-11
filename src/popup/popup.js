@@ -5,7 +5,7 @@ import { updateSimulation, renderSimulation, addCustomTargetNew, loadCustomTarge
 
 // 전역 변수
 let currentPrice = 0
-// priceChart 변수 제거 - 자체 차트 구현으로 변경
+
 let priceHistory = []
 
 // DOM 요소 가져오기
@@ -25,8 +25,7 @@ const elements = {
 	simulationContainer: document.getElementById('simulationContainer'),
 	addCustomTarget: document.getElementById('addCustomTarget'),
 
-	// 차트
-	priceChartCanvas: document.getElementById('priceChart'),
+
 
 	// 버튼들
 	editModeToggle: document.getElementById('editModeToggle'),
@@ -106,9 +105,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 		updateHeaderButton()
 		console.log('헤더 버튼 업데이트 완료')
 
-		// 8. 차트 초기화
-		initializeChart()
-		console.log('차트 초기화 완료')
+		
 
 		// 9. 저장된 데이터로 초기 화면 업데이트
 		updateDisplay()
@@ -212,7 +209,7 @@ async function fetchKakaoPrice(force = false) {
 
 		if (result && result.price > 0) {
 			currentPrice = result.price
-			console.log(`주가 조회 성공: ₩${currentPrice.toLocaleString()}`)
+			console.log(`주가 조회 성공: ₩${currentPrice.toLocaleString()} (제공: ${result.source})`)
 
 			// 히스토리 데이터 처리
 			if (result.history && result.history.length > 0) {
@@ -227,11 +224,10 @@ async function fetchKakaoPrice(force = false) {
 			}
 
 			updatePriceDisplay()
-			updateChart()
-			updateLastUpdate()
+			updateLastUpdate(result.source)
 
-			// 현재가 자동 저장
-			await saveCurrentPrice()
+			// 현재가 자동 저장 (API 소스 정보 포함)
+			await saveCurrentPrice(result.source)
 
 			const now = new Date().toLocaleTimeString('ko-KR')
 			const message = result.isEstimated
@@ -381,220 +377,7 @@ function updateDisplay() {
 
 
 
-// 간단한 자체 차트 초기화 (Chart.js 대신)
-function initializeChart() {
-	try {
-		console.log('자체 차트 초기화 시작')
 
-		// 캔버스 요소 확인
-		if (!elements.priceChartCanvas) {
-			console.error('차트 캔버스 요소를 찾을 수 없습니다!')
-			return
-		}
-
-		console.log('차트 요소 확인됨:', elements.priceChartCanvas)
-
-		// 캔버스 크기 설정
-		const canvas = elements.priceChartCanvas
-		const container = canvas.parentElement
-		const rect = container.getBoundingClientRect()
-		canvas.width = rect.width || 300
-		canvas.height = 200
-
-		// 초기 차트 그리기
-		drawChart()
-
-		console.log('자체 차트 초기화 완료')
-	} catch (error) {
-		console.error('차트 초기화 실패:', error)
-
-		// 오류 메시지를 차트 컨테이너에 표시
-		if (elements.priceChartCanvas && elements.priceChartCanvas.parentElement) {
-			elements.priceChartCanvas.parentElement.innerHTML = `
-				<div style="text-align: center; padding: 20px; color: #666;">
-					📊 차트 로딩 중...<br>
-					<small>잠시만 기다려주세요</small>
-				</div>
-			`
-		}
-	}
-}
-
-// 간단한 라인 차트 그리기 함수
-function drawChart() {
-	const canvas = elements.priceChartCanvas
-	if (!canvas) return
-
-	const ctx = canvas.getContext('2d')
-	const width = canvas.width
-	const height = canvas.height
-
-	// 캔버스 초기화
-	ctx.clearRect(0, 0, width, height)
-
-	// 배경 설정
-	ctx.fillStyle =
-		getComputedStyle(document.documentElement).getPropertyValue('--bg-color') || '#ffffff'
-	ctx.fillRect(0, 0, width, height)
-
-	// 데이터 준비 (최근 5일만)
-	let data = []
-	let labels = []
-
-	if (priceHistory.length > 0) {
-		// 최근 5일 데이터만 사용
-		const recentHistory = priceHistory.slice(-5)
-		data = recentHistory.map((item) => item.price)
-		labels = recentHistory.map((item) =>
-			item.time.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
-		)
-	} else if (currentPrice > 0) {
-		data = [currentPrice]
-		labels = ['현재']
-	} else {
-		// 기본 예시 데이터 (최근 5일)
-		data = [95000, 98000, 96000, 99000, 97000]
-		labels = ['월', '화', '수', '목', '금']
-	}
-
-	if (data.length === 0) return
-
-	// 차트 영역 설정
-	const padding = 40
-	const chartWidth = width - padding * 2
-	const chartHeight = height - padding * 2
-
-	// 데이터 범위 계산
-	const minValue = Math.min(...data) * 0.995
-	const maxValue = Math.max(...data) * 1.005
-	const valueRange = maxValue - minValue || 1000
-
-	// 격자 그리기
-	ctx.strokeStyle =
-		getComputedStyle(document.documentElement).getPropertyValue('--border-color') || '#e0e0e0'
-	ctx.lineWidth = 1
-
-	// 가로 격자선 (Y축)
-	for (let i = 0; i <= 4; i++) {
-		const y = padding + (chartHeight / 4) * i
-		ctx.beginPath()
-		ctx.moveTo(padding, y)
-		ctx.lineTo(width - padding, y)
-		ctx.stroke()
-
-		// Y축 라벨
-		const value = maxValue - (valueRange / 4) * i
-		ctx.fillStyle =
-			getComputedStyle(document.documentElement).getPropertyValue('--secondary-color') || '#666'
-		ctx.font = '10px -apple-system, BlinkMacSystemFont, sans-serif'
-		ctx.textAlign = 'right'
-		ctx.fillText('₩' + Math.round(value).toLocaleString(), padding - 5, y + 3)
-	}
-
-	// 라인 차트 그리기
-	if (data.length > 0) {
-		const stepX = data.length > 1 ? chartWidth / (data.length - 1) : chartWidth / 2
-
-		// 라인 그리기
-		ctx.strokeStyle =
-			getComputedStyle(document.documentElement).getPropertyValue('--primary-color') || '#007bff'
-		ctx.lineWidth = 2
-		ctx.beginPath()
-
-		for (let i = 0; i < data.length; i++) {
-			const x = padding + stepX * i
-			const y = padding + chartHeight - ((data[i] - minValue) / valueRange) * chartHeight
-
-			if (i === 0) {
-				ctx.moveTo(x, y)
-			} else {
-				ctx.lineTo(x, y)
-			}
-		}
-		ctx.stroke()
-
-		// 영역 채우기
-		if (data.length > 1) {
-			ctx.fillStyle = 'rgba(0, 123, 255, 0.1)'
-			ctx.beginPath()
-			ctx.moveTo(padding, height - padding)
-
-			for (let i = 0; i < data.length; i++) {
-				const x = padding + stepX * i
-				const y = padding + chartHeight - ((data[i] - minValue) / valueRange) * chartHeight
-				ctx.lineTo(x, y)
-			}
-
-			ctx.lineTo(padding + stepX * (data.length - 1), height - padding)
-			ctx.closePath()
-			ctx.fill()
-		}
-
-		// 포인트 그리기
-		ctx.fillStyle =
-			getComputedStyle(document.documentElement).getPropertyValue('--primary-color') || '#007bff'
-		for (let i = 0; i < data.length; i++) {
-			const x = padding + stepX * i
-			const y = padding + chartHeight - ((data[i] - minValue) / valueRange) * chartHeight
-
-			ctx.beginPath()
-			ctx.arc(x, y, 3, 0, 2 * Math.PI)
-			ctx.fill()
-		}
-
-		// X축 라벨
-		ctx.fillStyle =
-			getComputedStyle(document.documentElement).getPropertyValue('--secondary-color') || '#666'
-		ctx.font = '10px -apple-system, BlinkMacSystemFont, sans-serif'
-		ctx.textAlign = 'center'
-
-		for (let i = 0; i < labels.length; i++) {
-			const x = padding + stepX * i
-			ctx.fillText(labels[i], x, height - padding + 15)
-		}
-	}
-
-	// 차트 제목
-	ctx.fillStyle =
-		getComputedStyle(document.documentElement).getPropertyValue('--text-color') || '#333'
-	ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif'
-	ctx.textAlign = 'left'
-	ctx.fillText('카카오 주가 변동', padding, 20)
-
-	console.log('차트 그리기 완료:', {
-		dataLength: data.length,
-		minValue: Math.round(minValue),
-		maxValue: Math.round(maxValue),
-	})
-}
-
-// 차트 업데이트 (자체 구현)
-function updateChart() {
-	try {
-		console.log('차트 업데이트 시작:', {
-			historyLength: priceHistory.length,
-			currentPrice,
-		})
-
-		// 데이터가 없으면 현재가로라도 표시
-		if (priceHistory.length === 0 && currentPrice > 0) {
-			priceHistory = [
-				{
-					time: new Date(),
-					price: currentPrice,
-				},
-			]
-			console.log('현재가로 히스토리 생성:', priceHistory)
-		}
-
-		// 차트 다시 그리기
-		drawChart()
-
-		console.log('차트 업데이트 완료')
-	} catch (error) {
-		console.error('차트 업데이트 실패:', error)
-	}
-}
 
 // 데이터 저장
 async function saveData() {
@@ -638,7 +421,7 @@ async function saveData() {
 }
 
 // 현재가 저장
-async function saveCurrentPrice() {
+async function saveCurrentPrice(source = '') {
 	if (currentPrice > 0) {
 		try {
 			// 히스토리에 현재 가격 추가 (최근 5일만 유지)
@@ -662,6 +445,7 @@ async function saveCurrentPrice() {
 			const priceData = {
 				currentPrice,
 				lastPriceUpdate: now.toISOString(),
+				source: source, // API 소스 정보 추가
 				priceHistory: priceHistory.map((item) => ({
 					time: item.time.toISOString(),
 					price: item.price,
@@ -671,6 +455,7 @@ async function saveCurrentPrice() {
 			console.log('현재가 및 히스토리 저장:', {
 				currentPrice,
 				historyLength: priceHistory.length,
+				source: source,
 			})
 
 			if (chrome.storage && chrome.storage.sync) {
@@ -700,6 +485,7 @@ async function loadStoredPrice() {
 			const {
 				currentPrice: savedPrice,
 				lastPriceUpdate,
+				source: savedSource,
 				priceHistory: savedHistory,
 			} = result.priceData
 
@@ -718,13 +504,20 @@ async function loadStoredPrice() {
 				console.log('저장된 현재가 로드:', {
 					price: currentPrice,
 					lastUpdate: lastPriceUpdate,
+					source: savedSource,
 					historyLength: priceHistory.length,
 				})
 
-				// 마지막 업데이트 시간 표시
+				// 마지막 업데이트 시간 표시 (API 소스 포함)
 				if (lastPriceUpdate && elements.lastUpdate) {
 					const updateTime = new Date(lastPriceUpdate)
-					elements.lastUpdate.textContent = updateTime.toLocaleString('ko-KR')
+					const timeStr = updateTime.toLocaleString('ko-KR')
+					
+					if (savedSource) {
+						elements.lastUpdate.textContent = `${timeStr} (제공: ${savedSource})`
+					} else {
+						elements.lastUpdate.textContent = timeStr
+					}
 				}
 			}
 		} else {
@@ -899,9 +692,15 @@ async function refreshPrice() {
 }
 
 // 마지막 업데이트 시간 표시
-function updateLastUpdate() {
+function updateLastUpdate(source = '') {
 	const now = new Date()
-	elements.lastUpdate.textContent = now.toLocaleTimeString('ko-KR')
+	const timeStr = now.toLocaleTimeString('ko-KR')
+	
+	if (source && elements.lastUpdate) {
+		elements.lastUpdate.textContent = `${timeStr} (제공: ${source})`
+	} else if (elements.lastUpdate) {
+		elements.lastUpdate.textContent = timeStr
+	}
 }
 
 // 로딩 상태 표시
@@ -949,6 +748,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 		currentPrice = request.price
 		updatePriceDisplay()
 		updateDisplay()
+		
+		// API 소스 정보가 있으면 마지막 업데이트 시간에 포함
+		if (request.source) {
+			updateLastUpdate(request.source)
+		}
 	}
 })
 
