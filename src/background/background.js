@@ -6,6 +6,36 @@ let currentSettings = {}
 let currentPrice = 0
 let userData = {}
 
+/**
+ * 한국 주식 시장 운영 시간 체크
+ * 평일 오전 9시 ~ 오후 3시 30분 (KST 기준)
+ * @returns {boolean} 시장 운영 시간 여부
+ */
+function isKoreanMarketOpen() {
+	const now = new Date()
+	
+	// KST (UTC+9) 시간으로 변환
+	const kstOffset = 9 * 60 * 60 * 1000 // 9시간을 밀리초로
+	const utc = now.getTime() + (now.getTimezoneOffset() * 60 * 1000)
+	const kstTime = new Date(utc + kstOffset)
+	
+	// 요일 체크 (0: 일요일, 1: 월요일, ..., 6: 토요일)
+	const dayOfWeek = kstTime.getDay()
+	if (dayOfWeek === 0 || dayOfWeek === 6) {
+		return false // 주말
+	}
+	
+	// 시간 체크 (09:00 ~ 15:30)
+	const hour = kstTime.getHours()
+	const minute = kstTime.getMinutes()
+	const currentTime = hour * 100 + minute // HHMM 형태로 변환
+	
+	const marketOpen = 900   // 09:00
+	const marketClose = 1530 // 15:30
+	
+	return currentTime >= marketOpen && currentTime <= marketClose
+}
+
 // 설치 시 초기화
 chrome.runtime.onInstalled.addListener(async () => {
 	console.log('영차영차 설치됨')
@@ -64,7 +94,7 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
 			break
 
 		case 'forceUpdate':
-			await fetchAndUpdatePrice()
+			await fetchAndUpdatePriceForced()
 			sendResponse({ success: true })
 			break
 	}
@@ -73,6 +103,17 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
 // 가격 조회 및 업데이트 (여러 API 시도)
 async function fetchAndUpdatePrice() {
 	console.log('주가 업데이트 시작...')
+
+	// 시장 시간 체크 - 시장이 닫혀있으면 API 호출 건너뛰기
+	if (!isKoreanMarketOpen()) {
+		console.log('한국 주식 시장 시간 외 - API 호출 건너뛰기')
+		
+		// 배지는 기존 데이터로 업데이트
+		if (currentPrice > 0) {
+			await updateBadge()
+		}
+		return false
+	}
 
 	// API 시도 순서
 	const apiMethods = [
@@ -138,6 +179,10 @@ async function fetchAndUpdatePrice() {
 
 // Background용 Yahoo Finance API
 async function fetchFromYahooFinanceAPI() {
+	if (!isKoreanMarketOpen()) {
+		throw new Error('한국 주식 시장이 닫혀있습니다')
+	}
+
 	const response = await fetch(
 		'https://query1.finance.yahoo.com/v8/finance/chart/035720.KS?interval=1d&range=1d',
 		{
@@ -170,6 +215,10 @@ async function fetchFromYahooFinanceAPI() {
 
 // Background용 대체 Yahoo API
 async function fetchFromAlternativeYahooAPI() {
+	if (!isKoreanMarketOpen()) {
+		throw new Error('한국 주식 시장이 닫혀있습니다')
+	}
+
 	const response = await fetch(
 		'https://query1.finance.yahoo.com/v7/finance/quote?symbols=035720.KS',
 		{
@@ -196,6 +245,10 @@ async function fetchFromAlternativeYahooAPI() {
 
 // Background용 검색 API
 async function fetchFromSearchAPI() {
+	if (!isKoreanMarketOpen()) {
+		throw new Error('한국 주식 시장이 닫혀있습니다')
+	}
+
 	const response = await fetch(
 		'https://query2.finance.yahoo.com/v1/finance/search?q=035720.KS&quotesCount=1&newsCount=0',
 		{
@@ -377,6 +430,155 @@ chrome.notifications.onClicked.addListener((notificationId) => {
 	// 팝업 열기
 	chrome.action.openPopup()
 })
+
+// 강제 가격 조회 및 업데이트 (시장 시간 무시)
+async function fetchAndUpdatePriceForced() {
+	console.log('강제 주가 업데이트 시작... (시장 시간 무시)')
+
+	// API 시도 순서 (시장 시간 체크 제거된 버전)
+	const apiMethods = [
+		() => fetchFromYahooFinanceAPIForced(),
+		() => fetchFromAlternativeYahooAPIForced(),
+		() => fetchFromSearchAPIForced(),
+	]
+
+	for (let i = 0; i < apiMethods.length; i++) {
+		try {
+			console.log(`Background 강제 API ${i + 1} 시도 중...`)
+			const price = await apiMethods[i]()
+
+			if (price && price > 0) {
+				// 가격 변동 체크
+				const priceChanged = currentPrice !== price
+				currentPrice = Math.round(price)
+
+				console.log(`Background 강제 API ${i + 1} 성공: ₩${currentPrice.toLocaleString()}`)
+
+				// 배지 업데이트
+				await updateBadge()
+
+				// 위젯 업데이트
+				if (currentSettings.enableWidget) {
+					await updateWidget()
+				}
+
+				// 팝업이 열려있으면 가격 업데이트 알림
+				if (priceChanged) {
+					chrome.runtime
+						.sendMessage({
+							action: 'priceUpdated',
+							price: currentPrice,
+						})
+						.catch(() => {
+							// 팝업이 열려있지 않으면 무시
+						})
+				}
+
+				return true // 성공하면 즉시 반환
+			}
+		} catch (error) {
+			console.warn(`Background 강제 API ${i + 1} 실패:`, error.message)
+			continue // 다음 API 시도
+		}
+	}
+
+	// 모든 API 실패 시
+	console.error('모든 Background 강제 API 실패')
+
+	// 현재 가격이 0이면 추정값 사용
+	if (currentPrice === 0) {
+		const basePrice = 98000
+		const variation = Math.floor(Math.random() * 6000) - 3000
+		currentPrice = basePrice + variation
+		console.log('Background 강제 추정 주가 사용:', currentPrice)
+		await updateBadge()
+	}
+
+	return false
+}
+
+// Background용 Yahoo Finance API (시장 시간 무시)
+async function fetchFromYahooFinanceAPIForced() {
+	const response = await fetch(
+		'https://query1.finance.yahoo.com/v8/finance/chart/035720.KS?interval=1d&range=1d',
+		{
+			method: 'GET',
+			headers: {
+				'User-Agent':
+					'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+				Accept: 'application/json, text/plain, */*',
+				'Cache-Control': 'no-cache',
+			},
+		}
+	)
+
+	if (!response.ok) {
+		throw new Error(`HTTP ${response.status}`)
+	}
+
+	const data = await response.json()
+
+	if (data.chart?.result?.[0]?.meta) {
+		const meta = data.chart.result[0].meta
+		const price = meta.regularMarketPrice || meta.previousClose
+		if (price && price > 0) {
+			return price
+		}
+	}
+
+	throw new Error('유효한 가격 데이터 없음')
+}
+
+// Background용 대체 Yahoo API (시장 시간 무시)
+async function fetchFromAlternativeYahooAPIForced() {
+	const response = await fetch(
+		'https://query1.finance.yahoo.com/v7/finance/quote?symbols=035720.KS',
+		{
+			method: 'GET',
+			headers: {
+				'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+				Accept: 'application/json',
+			},
+		}
+	)
+
+	if (!response.ok) {
+		throw new Error(`HTTP ${response.status}`)
+	}
+
+	const data = await response.json()
+
+	if (data.quoteResponse?.result?.[0]?.regularMarketPrice) {
+		return data.quoteResponse.result[0].regularMarketPrice
+	}
+
+	throw new Error('대체 API에서 가격 데이터 없음')
+}
+
+// Background용 검색 API (시장 시간 무시)
+async function fetchFromSearchAPIForced() {
+	const response = await fetch(
+		'https://query2.finance.yahoo.com/v1/finance/search?q=035720.KS&quotesCount=1&newsCount=0',
+		{
+			method: 'GET',
+			headers: {
+				'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_7_1 like Mac OS X) AppleWebKit/605.1.15',
+			},
+		}
+	)
+
+	if (!response.ok) {
+		throw new Error(`HTTP ${response.status}`)
+	}
+
+	const data = await response.json()
+
+	if (data.quotes?.[0]?.regularMarketPrice) {
+		return data.quotes[0].regularMarketPrice
+	}
+
+	throw new Error('검색 API에서 가격 데이터 없음')
+}
 
 // 초기 실행
 ;(async () => {

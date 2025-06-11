@@ -222,3 +222,71 @@ export async function fetchFromNaverFinance() {
 
 	throw new Error('네이버 API: 카카오 주식 정보 없음')
 }
+
+/**
+ * 목표 설정 및 보상 시뮬레이션 관련 유틸리티 함수들
+ * ES6 모듈로 export하여 다른 스크립트에서 import 가능
+ */
+
+/**
+ * 한국 주식 시장 운영 시간 체크
+ * 평일 오전 9시 ~ 오후 3시 30분 (KST 기준)
+ * @returns {boolean} 시장 운영 시간 여부
+ */
+export function isKoreanMarketOpen() {
+	const now = new Date()
+	
+	// KST (UTC+9) 시간으로 변환
+	const kstOffset = 9 * 60 * 60 * 1000 // 9시간을 밀리초로
+	const utc = now.getTime() + (now.getTimezoneOffset() * 60 * 1000)
+	const kstTime = new Date(utc + kstOffset)
+	
+	// 요일 체크 (0: 일요일, 1: 월요일, ..., 6: 토요일)
+	const dayOfWeek = kstTime.getDay()
+	if (dayOfWeek === 0 || dayOfWeek === 6) {
+		return false // 주말
+	}
+	
+	// 시간 체크 (09:00 ~ 15:30)
+	const hour = kstTime.getHours()
+	const minute = kstTime.getMinutes()
+	const currentTime = hour * 100 + minute // HHMM 형태로 변환
+	
+	const marketOpen = 900   // 09:00
+	const marketClose = 1530 // 15:30
+	
+	return currentTime >= marketOpen && currentTime <= marketClose
+}
+
+/**
+ * 시장 상태 메시지 반환
+ * @returns {string} 시장 상태 설명
+ */
+export function getMarketStatusMessage() {
+	const now = new Date()
+	const kstOffset = 9 * 60 * 60 * 1000
+	const utc = now.getTime() + (now.getTimezoneOffset() * 60 * 1000)
+	const kstTime = new Date(utc + kstOffset)
+	
+	const dayOfWeek = kstTime.getDay()
+	const hour = kstTime.getHours()
+	const minute = kstTime.getMinutes()
+	
+	if (dayOfWeek === 0 || dayOfWeek === 6) {
+		return '주말 - 한국 주식 시장 휴장'
+	}
+	
+	const currentTime = hour * 100 + minute
+	if (currentTime < 900) {
+		return '장 시작 전 - 오전 9시에 개장'
+	} else if (currentTime > 1530) {
+		return '장 마감 - 다음 거래일 오전 9시에 개장'
+	}
+	
+	return '장 운영 중'
+}
+
+/**
+ * 카카오 주가 조회 (Yahoo Finance API)
+ * @returns {Promise<Object|null>} 주가 정보 또는 null
+ */
