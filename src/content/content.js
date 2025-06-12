@@ -24,74 +24,155 @@ function createWidgetHTML() {
             right: 20px;
             width: 280px;
             background: #ffffff;
-            border: 1px solid #e0e0e0;
+            border: 1px solid #e9ecef;
             border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             z-index: 999999;
-            color: #333;
+            color: #333333;
+            transition: all 0.3s ease;
         ">
-            <div style="
-                padding: 16px;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
+            <div id="widget-header" style="
+                padding: 12px 16px;
+                background: #f8f9fa;
+                border-bottom: 1px solid #e9ecef;
                 border-radius: 12px 12px 0 0;
                 cursor: move;
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
             ">
-                <div style="font-weight: 600; font-size: 14px;">🐜 카카오 RSU</div>
-                <div style="display: flex; gap: 8px;">
+                <div style="font-weight: 600; font-size: 14px; color: #333333;">🐜 영차영차 카카오</div>
+                <div style="display: flex; gap: 6px;">
                     <button id="widget-minimize" style="
-                        background: rgba(255,255,255,0.2);
-                        border: none;
-                        color: white;
+                        background: none;
+                        border: 1px solid #e9ecef;
+                        color: #6c757d;
                         width: 24px;
                         height: 24px;
                         border-radius: 4px;
                         cursor: pointer;
                         font-size: 12px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        transition: all 0.3s ease;
                     " title="최소화">−</button>
                     <button id="widget-close" style="
-                        background: rgba(255,255,255,0.2);
-                        border: none;
-                        color: white;
+                        background: none;
+                        border: 1px solid #e9ecef;
+                        color: #6c757d;
                         width: 24px;
                         height: 24px;
                         border-radius: 4px;
                         cursor: pointer;
                         font-size: 12px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        transition: all 0.3s ease;
                     " title="닫기">×</button>
                 </div>
             </div>
             <div id="widget-content" style="padding: 16px;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
-                    <span style="color: #666; font-size: 12px;">현재가</span>
-                    <span id="widget-price" style="font-weight: 600; color: #2196F3;">₩0</span>
+                    <span style="color: #6c757d; font-size: 12px;">현재가</span>
+                    <span id="widget-price" style="font-weight: 600; color: #333333;">₩0</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
-                    <span style="color: #666; font-size: 12px;">총 자산</span>
-                    <span id="widget-asset" style="font-weight: 600; color: #4CAF50;">₩0</span>
+                    <span style="color: #6c757d; font-size: 12px;">총 자산</span>
+                    <span id="widget-asset" style="font-weight: 600; color: #28a745;">₩0</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 16px;">
-                    <span style="color: #666; font-size: 12px;">수익률</span>
+                    <span style="color: #6c757d; font-size: 12px;">수익률</span>
                     <span id="widget-profit" style="font-weight: 600;">0%</span>
                 </div>
-                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee;">
+                <div id="widget-progress-section" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e9ecef;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <span style="color: #666; font-size: 12px;">🚗 테슬라까지</span>
-                        <span id="widget-tesla-percent" style="font-size: 12px; font-weight: 600;">0%</span>
+                        <span style="color: #6c757d; font-size: 12px;">테슬라까지</span>
+                        <span id="widget-tesla-percent" style="font-size: 12px; font-weight: 600; color: #007bff;">0%</span>
                     </div>
-                    <div style="background: #f5f5f5; height: 6px; border-radius: 3px; overflow: hidden;">
+                    <div id="widget-progress-container" style="
+                        background: #e9ecef; 
+                        height: 8px; 
+                        border-radius: 4px; 
+                        overflow: hidden;
+                        position: relative;
+                    ">
                         <div id="widget-tesla-progress" style="
                             height: 100%;
-                            background: linear-gradient(90deg, #4CAF50, #2196F3);
+                            background: #007bff;
                             width: 0%;
                             transition: width 0.5s ease;
+                            border-radius: 4px;
                         "></div>
+                        <div id="widget-tesla-emoji" style="
+                            position: absolute;
+                            top: 50%;
+                            transform: translateY(-50%);
+                            font-size: 14px;
+                            transition: left 0.5s ease;
+                            left: 0%;
+                        ">🚗</div>
                     </div>
                 </div>
+            </div>
+            <div id="widget-minimized" style="
+                display: none;
+                padding: 8px 16px;
+                background: #f8f9fa;
+                border-radius: 12px;
+                height: 30px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            ">
+                <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                    <div id="widget-progress-container-mini" style="
+                        background: #e9ecef; 
+                        height: 6px; 
+                        border-radius: 3px; 
+                        overflow: hidden;
+                        position: relative;
+                        flex: 1;
+                        min-width: 120px;
+                    ">
+                        <div id="widget-tesla-progress-mini" style="
+                            height: 100%;
+                            background: #007bff;
+                            width: 0%;
+                            transition: width 0.5s ease;
+                            border-radius: 3px;
+                        "></div>
+                        <div id="widget-tesla-emoji-mini" style="
+                            position: absolute;
+                            top: 50%;
+                            transform: translateY(-50%);
+                            font-size: 12px;
+                            transition: left 0.5s ease;
+                            left: 0%;
+                        ">🚗</div>
+                    </div>
+                    <span id="widget-tesla-percent-mini" style="
+                        font-size: 11px; 
+                        font-weight: 600; 
+                        color: #007bff;
+                        min-width: 35px;
+                    ">0%</span>
+                </div>
+                <button id="widget-maximize" style="
+                    background: none;
+                    border: none;
+                    color: #6c757d;
+                    width: 20px;
+                    height: 20px;
+                    cursor: pointer;
+                    font-size: 10px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin-left: 8px;
+                " title="최대화">+</button>
             </div>
         </div>
     `;
@@ -138,13 +219,29 @@ function setupWidgetEvents() {
     
     // 최소화 버튼
     const minimizeBtn = widget.querySelector('#widget-minimize');
+    const maximizeBtn = widget.querySelector('#widget-maximize');
     const content = widget.querySelector('#widget-content');
-    if (minimizeBtn && content) {
+    const minimized = widget.querySelector('#widget-minimized');
+    const header = widget.querySelector('#widget-header');
+    
+    if (minimizeBtn && content && minimized && header) {
         minimizeBtn.addEventListener('click', () => {
-            const isMinimized = content.style.display === 'none';
-            content.style.display = isMinimized ? 'block' : 'none';
-            minimizeBtn.textContent = isMinimized ? '−' : '+';
-            minimizeBtn.title = isMinimized ? '최소화' : '최대화';
+            content.style.display = 'none';
+            header.style.display = 'none';
+            minimized.style.display = 'flex';
+            widget.style.height = '30px';
+            // 최소화 모드에서도 진행률 업데이트
+            updateProgressBars();
+        });
+    }
+    
+    // 최대화 버튼
+    if (maximizeBtn && content && minimized && header) {
+        maximizeBtn.addEventListener('click', () => {
+            content.style.display = 'block';
+            header.style.display = 'flex';
+            minimized.style.display = 'none';
+            widget.style.height = 'auto';
         });
     }
     
@@ -155,20 +252,37 @@ function setupWidgetEvents() {
 // 드래그 기능
 function setupDragEvents() {
     const widget = widgetData.widget;
-    const header = widget.querySelector('div'); // 첫 번째 div (헤더)
+    const header = widget.querySelector('#widget-header');
+    const minimized = widget.querySelector('#widget-minimized');
     
     let isDragging = false;
     let dragOffset = { x: 0, y: 0 };
     
-    header.addEventListener('mousedown', (e) => {
-        if (e.target.tagName === 'BUTTON') return; // 버튼 클릭은 제외
-        
-        isDragging = true;
-        const rect = widget.getBoundingClientRect();
-        dragOffset.x = e.clientX - rect.left;
-        dragOffset.y = e.clientY - rect.top;
-        e.preventDefault();
-    });
+    // 일반 헤더 드래그
+    if (header) {
+        header.addEventListener('mousedown', (e) => {
+            if (e.target.tagName === 'BUTTON') return; // 버튼 클릭은 제외
+            
+            isDragging = true;
+            const rect = widget.getBoundingClientRect();
+            dragOffset.x = e.clientX - rect.left;
+            dragOffset.y = e.clientY - rect.top;
+            e.preventDefault();
+        });
+    }
+    
+    // 최소화 모드 드래그
+    if (minimized) {
+        minimized.addEventListener('mousedown', (e) => {
+            if (e.target.tagName === 'BUTTON') return; // 버튼 클릭은 제외
+            
+            isDragging = true;
+            const rect = widget.getBoundingClientRect();
+            dragOffset.x = e.clientX - rect.left;
+            dragOffset.y = e.clientY - rect.top;
+            e.preventDefault();
+        });
+    }
     
     document.addEventListener('mousemove', (e) => {
         if (!isDragging) return;
@@ -188,6 +302,56 @@ function setupDragEvents() {
     document.addEventListener('mouseup', () => {
         isDragging = false;
     });
+}
+
+// 프로그레스바 및 이모지 위치 업데이트
+function updateProgressBars() {
+    const widget = widgetData.widget;
+    if (!widget) return;
+    
+    const { currentPrice, userData } = widgetData;
+    const { rsuAmount = 0 } = userData;
+    const totalAsset = rsuAmount * currentPrice;
+    const teslaPrice = 160000000; // 1억 6천만원
+    const progress = Math.min((totalAsset / teslaPrice) * 100, 100);
+    
+    // 일반 모드 프로그레스바
+    const progressFill = widget.querySelector('#widget-tesla-progress');
+    const progressText = widget.querySelector('#widget-tesla-percent');
+    const progressEmoji = widget.querySelector('#widget-tesla-emoji');
+    
+    if (progressFill) {
+        progressFill.style.width = `${progress}%`;
+    }
+    
+    if (progressText) {
+        progressText.textContent = `${progress.toFixed(1)}%`;
+    }
+    
+    if (progressEmoji) {
+        // 이모지를 진행률 끝에 위치 (최소 10px, 최대 95%)
+        const emojiPosition = Math.max(10, Math.min(progress * 0.95, 95));
+        progressEmoji.style.left = `${emojiPosition}%`;
+    }
+    
+    // 최소화 모드 프로그레스바
+    const progressFillMini = widget.querySelector('#widget-tesla-progress-mini');
+    const progressTextMini = widget.querySelector('#widget-tesla-percent-mini');
+    const progressEmojiMini = widget.querySelector('#widget-tesla-emoji-mini');
+    
+    if (progressFillMini) {
+        progressFillMini.style.width = `${progress}%`;
+    }
+    
+    if (progressTextMini) {
+        progressTextMini.textContent = `${progress.toFixed(1)}%`;
+    }
+    
+    if (progressEmojiMini) {
+        // 이모지를 진행률 끝에 위치 (최소 8px, 최대 95%)
+        const emojiPositionMini = Math.max(8, Math.min(progress * 0.95, 95));
+        progressEmojiMini.style.left = `${emojiPositionMini}%`;
+    }
 }
 
 // 위젯 내용 업데이트
@@ -216,23 +380,11 @@ function updateWidgetContent() {
     if (profitElement && avgPrice > 0) {
         const profitRate = ((currentPrice - avgPrice) / avgPrice) * 100;
         profitElement.textContent = `${profitRate > 0 ? '+' : ''}${profitRate.toFixed(1)}%`;
-        profitElement.style.color = profitRate >= 0 ? '#4CAF50' : '#f44336';
+        profitElement.style.color = profitRate >= 0 ? '#28a745' : '#dc3545';
     }
     
-    // 테슬라 진행률
-    const teslaPrice = 160000000; // 1억 6천만원
-    const progress = Math.min((totalAsset / teslaPrice) * 100, 100);
-    
-    const progressFill = widget.querySelector('#widget-tesla-progress');
-    const progressText = widget.querySelector('#widget-tesla-percent');
-    
-    if (progressFill) {
-        progressFill.style.width = `${progress}%`;
-    }
-    
-    if (progressText) {
-        progressText.textContent = `${progress.toFixed(1)}%`;
-    }
+    // 프로그레스바 업데이트
+    updateProgressBars();
 }
 
 // 위젯 표시
