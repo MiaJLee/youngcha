@@ -682,8 +682,6 @@ async function updateWidgetWithCurrentData(source = '') {
 		const settingsResult = await chrome.storage.sync.get(['settings'])
 		const settings = settingsResult.settings || { enableWidget: true }
 		
-
-		
 		// 백그라운드 스크립트를 통해 위젯에 데이터 전송
 		chrome.runtime.sendMessage({
 			action: 'updateWidget',

@@ -1,13 +1,38 @@
 // 함수 기반 위젯 시스템
 
+// 목표 객체 (goal.util.js와 동일한 구조)
+const targets = {
+	flight: {
+		icon: '🛩',
+		name: '유럽 왕복 일등석 항공권',
+		price: 12000000,
+		id: 'flight',
+	},
+	tesla: {
+		icon: '🏎',
+		name: '테슬라 Model 3',
+		price: 60000000,
+		id: 'tesla',
+	},
+	custom: null, // 커스텀 목표 (사용자가 설정)
+}
+
+// 현재 목표 가져오기 (custom 우선, 없으면 tesla)
+function getCurrentTarget() {
+	if (targets.custom) {
+		return targets.custom;
+	}
+	return targets.tesla;
+}
+
 // 위젯 상태 관리
 let widgetData = {
     isVisible: false,
     widget: null,
     currentPrice: 0,
     userData: {
-        rsuAmount: 0,
-        avgPrice: 0
+        rsuAmount: 135, // 기본값 설정
+        avgPrice: 37150 // 기본값 설정
     },
     settings: {
         enableWidget: true,
@@ -17,12 +42,25 @@ let widgetData = {
 
 // 위젯 HTML 생성
 function createWidgetHTML() {
+    // 현재 데이터로 초기값 계산
+    const { currentPrice, userData } = widgetData;
+    const { rsuAmount = 135, avgPrice = 37150 } = userData;
+    const totalAsset = rsuAmount * currentPrice;
+    
+    // 수익률 계산
+    let profitRate = 0;
+    let profitColor = '#333333';
+    if (avgPrice > 0 && currentPrice > 0) {
+        profitRate = ((currentPrice - avgPrice) / avgPrice) * 100;
+        profitColor = profitRate >= 0 ? '#28a745' : '#dc3545';
+    }
+    
     return `
         <div id="rsu-tracker-widget" style="
             position: fixed;
             bottom: 20px;
             right: 20px;
-            width: 280px;
+            width: 250px;
             background: #ffffff;
             border: 1px solid #e9ecef;
             border-radius: 12px;
@@ -77,20 +115,20 @@ function createWidgetHTML() {
             <div id="widget-content" style="padding: 16px;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
                     <span style="color: #6c757d; font-size: 12px;">현재가</span>
-                    <span id="widget-price" style="font-weight: 600; color: #333333;">₩0</span>
+                    <span id="widget-price" style="font-weight: 600; color: #333333;">₩${currentPrice.toLocaleString()}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
                     <span style="color: #6c757d; font-size: 12px;">총 자산</span>
-                    <span id="widget-asset" style="font-weight: 600; color: #28a745;">₩0</span>
+                    <span id="widget-asset" style="font-weight: 600; color: #28a745;">₩${totalAsset.toLocaleString()}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 16px;">
                     <span style="color: #6c757d; font-size: 12px;">수익률</span>
-                    <span id="widget-profit" style="font-weight: 600;">0%</span>
+                    <span id="widget-profit" style="font-weight: 600; color: ${profitColor};">${profitRate > 0 ? '+' : ''}${profitRate.toFixed(1)}%</span>
                 </div>
                 <div id="widget-progress-section" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e9ecef;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <span style="color: #6c757d; font-size: 12px;">테슬라까지</span>
-                        <span id="widget-tesla-percent" style="font-size: 12px; font-weight: 600; color: #007bff;">0%</span>
+                        <span id="widget-target-label" style="color: #6c757d; font-size: 12px;">🎯 목표까지</span>
+                        <span id="widget-target-percent" style="font-size: 12px; font-weight: 600; color: #007bff;">0%</span>
                     </div>
                     <div id="widget-progress-container" style="
                         background: #e9ecef; 
@@ -99,21 +137,13 @@ function createWidgetHTML() {
                         overflow: hidden;
                         position: relative;
                     ">
-                        <div id="widget-tesla-progress" style="
+                        <div id="widget-target-progress" style="
                             height: 100%;
                             background: #007bff;
                             width: 0%;
                             transition: width 0.5s ease;
                             border-radius: 4px;
                         "></div>
-                        <div id="widget-tesla-emoji" style="
-                            position: absolute;
-                            top: 50%;
-                            transform: translateY(-50%);
-                            font-size: 14px;
-                            transition: left 0.5s ease;
-                            left: 0%;
-                        ">🚗</div>
                     </div>
                 </div>
             </div>
@@ -123,11 +153,15 @@ function createWidgetHTML() {
                 background: #f8f9fa;
                 border-radius: 12px;
                 height: 30px;
-                display: flex;
                 align-items: center;
                 justify-content: space-between;
             ">
                 <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                    <div id="widget-target-emoji-mini" style="
+                        font-size: 16px;
+                        line-height: 1;
+                        flex-shrink: 0;
+                    ">🎯</div>
                     <div id="widget-progress-container-mini" style="
                         background: #e9ecef; 
                         height: 6px; 
@@ -135,29 +169,22 @@ function createWidgetHTML() {
                         overflow: hidden;
                         position: relative;
                         flex: 1;
-                        min-width: 120px;
+                        min-width: 100px;
                     ">
-                        <div id="widget-tesla-progress-mini" style="
+                        <div id="widget-target-progress-mini" style="
                             height: 100%;
                             background: #007bff;
                             width: 0%;
                             transition: width 0.5s ease;
                             border-radius: 3px;
                         "></div>
-                        <div id="widget-tesla-emoji-mini" style="
-                            position: absolute;
-                            top: 50%;
-                            transform: translateY(-50%);
-                            font-size: 12px;
-                            transition: left 0.5s ease;
-                            left: 0%;
-                        ">🚗</div>
                     </div>
-                    <span id="widget-tesla-percent-mini" style="
+                    <span id="widget-target-percent-mini" style="
                         font-size: 11px; 
                         font-weight: 600; 
                         color: #007bff;
                         min-width: 35px;
+                        flex-shrink: 0;
                     ">0%</span>
                 </div>
                 <button id="widget-maximize" style="
@@ -312,13 +339,23 @@ function updateProgressBars() {
     const { currentPrice, userData } = widgetData;
     const { rsuAmount = 0 } = userData;
     const totalAsset = rsuAmount * currentPrice;
-    const teslaPrice = 160000000; // 1억 6천만원
-    const progress = Math.min((totalAsset / teslaPrice) * 100, 100);
     
-    // 일반 모드 프로그레스바
-    const progressFill = widget.querySelector('#widget-tesla-progress');
-    const progressText = widget.querySelector('#widget-tesla-percent');
-    const progressEmoji = widget.querySelector('#widget-tesla-emoji');
+    // 현재 목표 가져오기
+    const currentTarget = getCurrentTarget();
+    const targetPrice = currentTarget.price;
+    const progress = Math.min((totalAsset / targetPrice) * 100, 100);
+    
+    // 확장 모드: 목표 라벨에 이모지 포함
+    const targetLabel = widget.querySelector('#widget-target-label');
+    if (targetLabel) {
+        const emoji = currentTarget.icon || '🎯';
+        const name = currentTarget.name || '목표';
+        targetLabel.textContent = `${emoji} ${name}까지`;
+    }
+    
+    // 일반 모드 프로그레스바 (이모지 제거)
+    const progressFill = widget.querySelector('#widget-target-progress');
+    const progressText = widget.querySelector('#widget-target-percent');
     
     if (progressFill) {
         progressFill.style.width = `${progress}%`;
@@ -328,16 +365,10 @@ function updateProgressBars() {
         progressText.textContent = `${progress.toFixed(1)}%`;
     }
     
-    if (progressEmoji) {
-        // 이모지를 진행률 끝에 위치 (최소 10px, 최대 95%)
-        const emojiPosition = Math.max(10, Math.min(progress * 0.95, 95));
-        progressEmoji.style.left = `${emojiPosition}%`;
-    }
-    
-    // 최소화 모드 프로그레스바
-    const progressFillMini = widget.querySelector('#widget-tesla-progress-mini');
-    const progressTextMini = widget.querySelector('#widget-tesla-percent-mini');
-    const progressEmojiMini = widget.querySelector('#widget-tesla-emoji-mini');
+    // 최소화 모드: 프로그레스바 왼쪽에 이모지 표시
+    const progressFillMini = widget.querySelector('#widget-target-progress-mini');
+    const progressTextMini = widget.querySelector('#widget-target-percent-mini');
+    const progressEmojiMini = widget.querySelector('#widget-target-emoji-mini');
     
     if (progressFillMini) {
         progressFillMini.style.width = `${progress}%`;
@@ -348,9 +379,8 @@ function updateProgressBars() {
     }
     
     if (progressEmojiMini) {
-        // 이모지를 진행률 끝에 위치 (최소 8px, 최대 95%)
-        const emojiPositionMini = Math.max(8, Math.min(progress * 0.95, 95));
-        progressEmojiMini.style.left = `${emojiPositionMini}%`;
+        // 현재 목표의 아이콘 사용 (크기 16px로 증가)
+        progressEmojiMini.textContent = currentTarget.icon || '🎯';
     }
 }
 
@@ -366,6 +396,7 @@ function updateWidgetContent() {
     const priceElement = widget.querySelector('#widget-price');
     if (priceElement) {
         priceElement.textContent = `₩${currentPrice.toLocaleString()}`;
+        priceElement.style.color = '#333333'; // 요청에 따라 검정색으로 변경
     }
     
     // 총 자산
@@ -454,7 +485,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 // 스토리지 변경 감지
 chrome.storage.onChanged.addListener((changes, namespace) => {
-    if (namespace === 'sync') {
+    if (namespace === 'sync' || namespace === 'local') {
         if (changes.settings) {
             const newSettings = changes.settings.newValue || {};
             widgetData.settings = { ...widgetData.settings, ...newSettings };
@@ -470,6 +501,12 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
             widgetData.userData = { ...widgetData.userData, ...changes.userData.newValue };
             updateWidgetContent();
         }
+        
+        // 커스텀 목표 변경 감지
+        if (changes.customTarget) {
+            targets.custom = changes.customTarget.newValue;
+            updateWidgetContent();
+        }
     }
 });
 
@@ -478,9 +515,27 @@ async function initializeWidget() {
     try {
         // 설정 및 데이터 로드
         const result = await chrome.storage.sync.get(['settings', 'userData']);
+        const localResult = await chrome.storage.local.get(['customTarget', 'lastPrice']);
         
+        // 설정 로드
         widgetData.settings = result.settings || { enableWidget: true };
-        widgetData.userData = result.userData || {};
+        
+        // 사용자 데이터 로드 (기본값 유지)
+        widgetData.userData = { 
+            rsuAmount: 135, // 기본값
+            avgPrice: 37150, // 기본값
+            ...result.userData // 저장된 값으로 덮어쓰기
+        };
+        
+        // 커스텀 목표 로드
+        if (localResult.customTarget) {
+            targets.custom = localResult.customTarget;
+        }
+        
+        // 저장된 마지막 가격 로드
+        if (localResult.lastPrice) {
+            widgetData.currentPrice = localResult.lastPrice;
+        }
         
         // 위젯 표시 설정이 활성화되어 있으면 위젯 생성
         if (widgetData.settings.enableWidget !== false) {
@@ -497,6 +552,10 @@ async function initializeWidget() {
         
     } catch (error) {
         console.error('위젯 초기화 실패:', error);
+        // 오류가 있어도 기본값으로 위젯 표시
+        if (widgetData.settings.enableWidget !== false) {
+            showWidget();
+        }
     }
 }
 
@@ -504,5 +563,5 @@ async function initializeWidget() {
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeWidget);
 } else {
-    setTimeout(initializeWidget, 100);
+    initializeWidget();
 } 

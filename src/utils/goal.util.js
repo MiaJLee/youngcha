@@ -24,6 +24,17 @@ export const targets = {
 export const customEmojis = ['⛱️', '⭐', '🎁', '🏆', '💎']
 
 /**
+ * 현재 목표 가져오기 (custom 우선, 없으면 tesla)
+ * @returns {Object} 현재 목표 객체
+ */
+export function getCurrentTarget() {
+	if (targets.custom) {
+		return targets.custom;
+	}
+	return targets.tesla;
+}
+
+/**
  * 보상 시뮬레이션 업데이트
  * @param {number} totalAsset - 총 자산
  * @param {number} rsuAmount - RSU 수량

@@ -5,6 +5,23 @@ let currentSettings = {}
 let currentPrice = 0
 let userData = {}
 
+// 목표 객체 (goal.util.js와 동일한 구조)
+const targets = {
+	flight: {
+		icon: '🛩',
+		name: '유럽 왕복 일등석 항공권',
+		price: 12000000,
+		id: 'flight',
+	},
+	tesla: {
+		icon: '🏎',
+		name: '테슬라 Model 3',
+		price: 60000000,
+		id: 'tesla',
+	},
+	custom: null, // 커스텀 목표 (사용자가 설정)
+}
+
 /**
  * 한국 주식 시장 운영 시간 체크
  * 평일 오전 9시 ~ 오후 3시 30분 (KST 기준)
@@ -388,6 +405,12 @@ async function loadUserData() {
 		if (result.userData) {
 			userData = result.userData
 		}
+		
+		// 커스텀 목표 로드
+		const localResult = await chrome.storage.local.get(['customTarget'])
+		if (localResult.customTarget) {
+			targets.custom = localResult.customTarget
+		}
 	} catch (error) {
 		console.error('사용자 데이터 로드 실패:', error)
 	}
@@ -403,6 +426,18 @@ chrome.storage.onChanged.addListener(async (changes, namespace) => {
 		if (changes.userData) {
 			userData = changes.userData.newValue || {}
 
+			// 위젯 업데이트
+			if (currentSettings.enableWidget) {
+				await updateWidget()
+			}
+		}
+	}
+	
+	// 로컬 스토리지 변경 감지 (커스텀 목표용)
+	if (namespace === 'local') {
+		if (changes.customTarget) {
+			targets.custom = changes.customTarget.newValue || null
+			
 			// 위젯 업데이트
 			if (currentSettings.enableWidget) {
 				await updateWidget()
