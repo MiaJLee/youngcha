@@ -1,5 +1,5 @@
 // API 유틸리티 함수들 import
-import { fetchKakaoPrice as fetchKakaoPriceAPI } from '../utils/api.util.js'
+import { fetchKakaoPrice as fetchKakaoPriceAPI, isKoreanMarketOpen, getMarketStatusMessage } from '../utils/api.util.js'
 // 목표 및 시뮬레이션 유틸리티 함수들 import
 import { updateSimulation, renderSimulation, addCustomTargetNew, loadCustomTarget, updateHeaderButton } from '../utils/goal.util.js'
 
