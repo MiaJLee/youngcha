@@ -3,9 +3,9 @@
 	"name": "Kakao RSU Value Tracker",
 	"version": "1.0.0",
 	"description": "카카오 RSU 실시간 자산 조회 및 동기부여 위젯",
-	"permissions": ["storage", "notifications", "alarms", "activeTab"],
+	"permissions": ["storage", "notifications", "alarms", "activeTab", "tabs"],
 	"host_permissions": [
-
+		"<all_urls>",
 		"https://polling.finance.naver.com/*",
 		"https://yfapi.net/*",
 		"https://query1.finance.yahoo.com/*",
@@ -31,7 +31,7 @@
 		{
 			"matches": ["<all_urls>"],
 			"js": ["src/content/content.js"],
-			"run_at": "document_idle"
+			"run_at": "document_end"
 		}
 	],
 	"icons": {
@@ -39,11 +39,6 @@
 		"32": "assets/icons/icon32.png",
 		"64": "assets/icons/icon64.png",
 		"128": "assets/icons/icon128.png"
-	},
-	"web_accessible_resources": [
-		{
-			"resources": ["src/widget/widget.html", "src/widget/widget.css", "src/widget/widget.js"],
-			"matches": ["<all_urls>"]
-		}
-	]
+	}
+
 }
