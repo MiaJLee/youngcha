@@ -42,29 +42,31 @@ let widgetData = {
 
 // 위젯 HTML 생성
 function createWidgetHTML() {
-    // 현재 데이터로 초기값 계산
     const { currentPrice, userData } = widgetData;
     const { rsuAmount = 135, avgPrice = 37150 } = userData;
     const totalAsset = rsuAmount * currentPrice;
-    
-    // 수익률 계산
     let profitRate = 0;
     let profitColor = '#333333';
     if (avgPrice > 0 && currentPrice > 0) {
         profitRate = ((currentPrice - avgPrice) / avgPrice) * 100;
         profitColor = profitRate >= 0 ? '#28a745' : '#dc3545';
     }
-    
+    const currentTarget = getCurrentTarget();
+    const targetPrice = currentTarget.price;
+    const progress = Math.min((totalAsset / targetPrice) * 100, 100);
+
     return `
         <div id="rsu-tracker-widget" style="
             position: fixed;
             bottom: 20px;
             right: 20px;
             width: 250px;
-            background: #ffffff;
-            border: 1px solid #e9ecef;
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(233,236,239,0.5);
             border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(31,38,135,0.18);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             z-index: 999999;
             color: #333333;
@@ -72,8 +74,7 @@ function createWidgetHTML() {
         ">
             <div id="widget-header" style="
                 padding: 12px 16px;
-                background: #f8f9fa;
-                border-bottom: 1px solid #e9ecef;
+                border-bottom: 1px solid rgba(233,236,239,0.5);
                 border-radius: 12px 12px 0 0;
                 cursor: move;
                 display: flex;
@@ -84,8 +85,8 @@ function createWidgetHTML() {
                 <div style="display: flex; gap: 6px;">
                     <button id="widget-minimize" style="
                         background: none;
-                        border: 1px solid #e9ecef;
-                        color: #6c757d;
+                        border: 1px solid rgba(233,236,239,0.5);
+                        color: #495057;
                         width: 24px;
                         height: 24px;
                         border-radius: 4px;
@@ -98,8 +99,8 @@ function createWidgetHTML() {
                     " title="최소화">−</button>
                     <button id="widget-close" style="
                         background: none;
-                        border: 1px solid #e9ecef;
-                        color: #6c757d;
+                        border: 1px solid rgba(233,236,239,0.5);
+                        color: #495057;
                         width: 24px;
                         height: 24px;
                         border-radius: 4px;
@@ -114,21 +115,21 @@ function createWidgetHTML() {
             </div>
             <div id="widget-content" style="padding: 16px;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
-                    <span style="color: #6c757d; font-size: 12px;">현재가</span>
+                    <span style="color: #495057; font-size: 12px;">현재가</span>
                     <span id="widget-price" style="font-weight: 600; color: #333333;">₩${currentPrice.toLocaleString()}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
-                    <span style="color: #6c757d; font-size: 12px;">총 자산</span>
+                    <span style="color: #495057; font-size: 12px;">총 자산</span>
                     <span id="widget-asset" style="font-weight: 600; color: #28a745;">₩${totalAsset.toLocaleString()}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 16px;">
-                    <span style="color: #6c757d; font-size: 12px;">수익률</span>
+                    <span style="color: #495057; font-size: 12px;">수익률</span>
                     <span id="widget-profit" style="font-weight: 600; color: ${profitColor};">${profitRate > 0 ? '+' : ''}${profitRate.toFixed(1)}%</span>
                 </div>
-                <div id="widget-progress-section" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e9ecef;">
+                <div id="widget-progress-section" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(233,236,239,0.5);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <span id="widget-target-label" style="color: #6c757d; font-size: 12px;">🎯 목표까지</span>
-                        <span id="widget-target-percent" style="font-size: 12px; font-weight: 600; color: #007bff;">0%</span>
+                        <span id="widget-target-label" style="color: #495057; font-size: 12px;">🎯 목표까지</span>
+                        <span id="widget-target-percent" style="font-size: 12px; font-weight: 600; color: #007bff;">${progress.toFixed(1)}%</span>
                     </div>
                     <div id="widget-progress-container" style="
                         background: #e9ecef; 
@@ -140,7 +141,7 @@ function createWidgetHTML() {
                         <div id="widget-target-progress" style="
                             height: 100%;
                             background: #007bff;
-                            width: 0%;
+                            width: ${progress}%;
                             transition: width 0.5s ease;
                             border-radius: 4px;
                         "></div>
@@ -174,7 +175,7 @@ function createWidgetHTML() {
                         <div id="widget-target-progress-mini" style="
                             height: 100%;
                             background: #007bff;
-                            width: 0%;
+                            width: ${progress}%;
                             transition: width 0.5s ease;
                             border-radius: 3px;
                         "></div>
@@ -185,12 +186,12 @@ function createWidgetHTML() {
                         color: #007bff;
                         min-width: 35px;
                         flex-shrink: 0;
-                    ">0%</span>
+                    ">${progress.toFixed(1)}%</span>
                 </div>
                 <button id="widget-maximize" style="
                     background: none;
                     border: none;
-                    color: #6c757d;
+                    color: #495057;
                     width: 20px;
                     height: 20px;
                     cursor: pointer;
@@ -223,6 +224,8 @@ function createWidget() {
     
     // 초기 업데이트
     updateWidgetContent();
+
+    console.log('createWidget');
 }
 
 // 위젯 이벤트 설정
