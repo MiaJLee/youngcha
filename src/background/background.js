@@ -1,26 +1,10 @@
 // 백그라운드 서비스 워커
+import { targets } from '../utils/goal.util.js';
 
 // 전역 변수
 let currentSettings = {}
 let currentPrice = 0
 let userData = {}
-
-// 목표 객체 (goal.util.js와 동일한 구조)
-const targets = {
-	flight: {
-		icon: '🛩',
-		name: '유럽 왕복 일등석 항공권',
-		price: 12000000,
-		id: 'flight',
-	},
-	tesla: {
-		icon: '🏎',
-		name: '테슬라 Model 3',
-		price: 60000000,
-		id: 'tesla',
-	},
-	custom: null, // 커스텀 목표 (사용자가 설정)
-}
 
 /**
  * 한국 주식 시장 운영 시간 체크
@@ -143,8 +127,15 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
 			// 모든 탭에 위젯 업데이트 메시지 전송
 			await updateWidget()
 			break
-		case 'wakeUp':
-			sendResponse({ success: true });
+		case 'notifyTargetAchieved':
+			if (request.target) {
+				chrome.notifications.create({
+					type: 'basic',
+					iconUrl: 'assets/icons/icon64.png',
+					title: '목표 달성! 🎉',
+					message: `${request.target.icon || '🎯'} ${request.target.name} 목표를 달성했습니다!\n축하합니다!`
+				});
+			}
 			break;
 	}
 })
@@ -222,9 +213,6 @@ async function fetchAndUpdatePrice() {
 
 	return false
 }
-
-
-
 
 
 // Background용 Yahoo Finance API

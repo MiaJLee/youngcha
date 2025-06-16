@@ -6,8 +6,6 @@ import { updateSimulation, renderSimulation, addCustomTargetNew, loadCustomTarge
 // 전역 변수
 let currentPrice = 0
 
-let priceHistory = []
-
 // DOM 요소 가져오기
 const elements = {
 	// RSU 입력 및 표시
@@ -183,18 +181,6 @@ async function fetchKakaoPrice(force = false) {
 
 		if (result && result.price > 0) {
 			currentPrice = result.price
-
-			// 히스토리 데이터 처리
-			if (result.history && result.history.length > 0) {
-				priceHistory = result.history
-			} else {
-				priceHistory = [
-					{
-						time: new Date(),
-						price: currentPrice,
-					},
-				]
-			}
 
 			updatePriceDisplay()
 			updateLastUpdate(result.source)
@@ -376,31 +362,11 @@ async function saveCurrentPrice(source = '') {
 			// 히스토리에 현재 가격 추가 (최근 5일만 유지)
 			const now = new Date()
 
-			// 오늘 데이터가 이미 있는지 확인
-			const today = now.toDateString()
-			const existingTodayIndex = priceHistory.findIndex((item) => item.time.toDateString() === today)
-
-			if (existingTodayIndex >= 0) {
-				// 오늘 데이터 업데이트
-				priceHistory[existingTodayIndex] = { time: now, price: currentPrice }
-			} else {
-				// 새로운 일자 데이터 추가
-				priceHistory.push({ time: now, price: currentPrice })
-			}
-
-			// 최근 5일만 유지
-			priceHistory = priceHistory.slice(-5)
-
 			const priceData = {
 				currentPrice,
 				lastPriceUpdate: now.toISOString(),
 				source: source, // API 소스 정보 추가
-				priceHistory: priceHistory.map((item) => ({
-					time: item.time.toISOString(),
-					price: item.price,
-				})),
 			}
-
 
 			if (chrome.storage && chrome.storage.sync) {
 				await chrome.storage.sync.set({ priceData })
@@ -432,19 +398,10 @@ async function loadStoredPrice() {
 				currentPrice: savedPrice,
 				lastPriceUpdate,
 				source: savedSource,
-				priceHistory: savedHistory,
 			} = result.priceData
 
 			if (savedPrice > 0) {
 				currentPrice = savedPrice
-
-				// 히스토리 데이터 복원 (최근 5일만)
-				if (savedHistory && savedHistory.length > 0) {
-					priceHistory = savedHistory.slice(-5).map((item) => ({
-						time: new Date(item.time),
-						price: item.price,
-					}))
-				}
 
 				// 마지막 업데이트 시간 표시 (API 소스 포함)
 				if (lastPriceUpdate && elements.lastUpdate) {

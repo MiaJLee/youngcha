@@ -36,8 +36,10 @@ let widgetData = {
     },
     settings: {
         enableWidget: true,
-        theme: 'light'
-    }
+        theme: 'light',
+        enableNotifications: true // 알림 활성화 여부(기본값 true, 실제 설정에 따라 변경됨)
+    },
+    notifiedTargets: {} // 목표별 알림 여부 기록
 };
 
 // 위젯 HTML 생성
@@ -83,21 +85,6 @@ function createWidgetHTML() {
             ">
                 <div style="font-weight: 600; font-size: 14px; color: #333333;">🐜 영차영차 카카오</div>
                 <div style="display: flex; gap: 6px;">
-                    <button id="widget-refresh" style="
-                        background: none;
-                        border: 1px solid rgba(233,236,239,0.5);
-                        color: #495057;
-                        width: 24px;
-                        height: 24px;
-                        border-radius: 4px;
-                        cursor: pointer;
-                        font-size: 14px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        transition: all 0.3s ease;
-                        margin-right: 2px;
-                    " title="주가 새로고침"><span id="widget-refresh-icon" style="display:inline-block;transition:transform 0.5s;">⟳</span></button>
                     <button id="widget-minimize" style="
                         background: none;
                         border: 1px solid rgba(233,236,239,0.5);
@@ -246,30 +233,6 @@ function setupWidgetEvents() {
     const widget = widgetData.widget;
 
     if (!widget) return;
-    
-    // 새로고침 버튼
-    const refreshBtn = widget.querySelector('#widget-refresh');
-    const refreshIcon = widget.querySelector('#widget-refresh-icon');
-    if (refreshBtn && refreshIcon) {
-        refreshBtn.addEventListener('click', () => {
-            // 로딩 애니메이션
-            refreshIcon.style.transform = 'rotate(360deg)';
-            refreshIcon.style.opacity = '0.5';
-            refreshBtn.disabled = true;
-            // 주가 데이터 요청
-            chrome.runtime.sendMessage({ action: 'getCurrentPrice' }, (response) => {
-                setTimeout(() => {
-                    refreshIcon.style.transform = '';
-                    refreshIcon.style.opacity = '1';
-                    refreshBtn.disabled = false;
-                }, 600);
-                if (response && response.price) {
-                    widgetData.currentPrice = response.price;
-                    updateWidgetContent();
-                }
-            });
-        });
-    }
     
     // 닫기 버튼
     const closeBtn = widget.querySelector('#widget-close');
@@ -457,6 +420,8 @@ function updateWidgetContent() {
     
     // 프로그레스바 업데이트
     updateProgressBars();
+    // 목표 달성 알림 체크
+    checkTargetAchievement();
 }
 
 // 위젯 표시
@@ -555,12 +520,12 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
 async function initializeWidget() {
     try {
         // 설정 및 데이터 로드
-        const result = await chrome.storage.sync.get(['settings', 'userData']);
+        const result = await chrome.storage.sync.get(['settings', 'userData', 'priceData']);
         const localResult = await chrome.storage.local.get(['customTarget', 'lastPrice']);
         
         // 설정 로드
         widgetData.settings = result.settings || { enableWidget: true };
-        
+
         // 사용자 데이터 로드 (기본값 유지)
         widgetData.userData = { 
             rsuAmount: 135, // 기본값
@@ -574,19 +539,14 @@ async function initializeWidget() {
         }
         
         // 저장된 마지막 가격 로드
-        if (localResult.lastPrice) {
-            widgetData.currentPrice = localResult.lastPrice;
+        if (result.priceData.currentPrice) {
+            widgetData.currentPrice = result.priceData.currentPrice;
         }
         
         // 위젯 표시 설정이 활성화되어 있으면 위젯 생성
         if (widgetData.settings.enableWidget !== false) {
-            chrome.runtime.sendMessage({ action: 'getCurrentPrice' }, (response) => {
-                if (response && response.price) {
-                    widgetData.currentPrice = response.price;
-                    updateWidgetContent();
-                    showWidget();
-                }
-            });
+            updateWidgetContent();
+            showWidget();
         }        
     } catch (error) {
         console.error('위젯 초기화 실패:', error);
@@ -602,4 +562,33 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeWidget);
 } else {
     initializeWidget();
+}
+
+// 목표 달성 알림 체크 함수
+function checkTargetAchievement() {
+    if (!widgetData.settings.enableNotifications) return;
+    const { currentPrice, userData } = widgetData;
+    const { rsuAmount = 0 } = userData;
+    const totalAsset = rsuAmount * currentPrice;
+    // 모든 목표에 대해 체크
+    Object.values(targets).forEach(target => {
+        if (!target || !target.price || !target.name) return;
+        const progress = (totalAsset / target.price) * 100;
+        if (progress >= 100 && !widgetData.notifiedTargets[target.id]) {
+            // background.js로 알림 요청 메시지 전송
+            chrome.runtime.sendMessage({
+                action: 'notifyTargetAchieved',
+                target: {
+                    id: target.id,
+                    name: target.name,
+                    icon: target.icon
+                }
+            });
+            widgetData.notifiedTargets[target.id] = true;
+        }
+        // 100% 미만으로 떨어지면 다시 알림 가능하도록 초기화
+        if (progress < 100) {
+            widgetData.notifiedTargets[target.id] = false;
+        }
+    });
 } 
