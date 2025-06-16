@@ -61,7 +61,7 @@ function createWidgetHTML() {
             bottom: 20px;
             right: 20px;
             width: 250px;
-            background: rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.4);
             border: 1px solid rgba(233,236,239,0.5);
             border-radius: 12px;
             box-shadow: 0 8px 32px 0 rgba(31,38,135,0.18);
@@ -83,6 +83,21 @@ function createWidgetHTML() {
             ">
                 <div style="font-weight: 600; font-size: 14px; color: #333333;">🐜 영차영차 카카오</div>
                 <div style="display: flex; gap: 6px;">
+                    <button id="widget-refresh" style="
+                        background: none;
+                        border: 1px solid rgba(233,236,239,0.5);
+                        color: #495057;
+                        width: 24px;
+                        height: 24px;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        font-size: 14px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        transition: all 0.3s ease;
+                        margin-right: 2px;
+                    " title="주가 새로고침"><span id="widget-refresh-icon" style="display:inline-block;transition:transform 0.5s;">⟳</span></button>
                     <button id="widget-minimize" style="
                         background: none;
                         border: 1px solid rgba(233,236,239,0.5);
@@ -119,7 +134,7 @@ function createWidgetHTML() {
                     <span id="widget-price" style="font-weight: 600; color: #333333;">₩${currentPrice.toLocaleString()}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
-                    <span style="color: #495057; font-size: 12px;">총 자산</span>
+                    <span style="color: #495057; font-size: 12px;">나의 RSU</span>
                     <span id="widget-asset" style="font-weight: 600; color: #28a745;">₩${totalAsset.toLocaleString()}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 16px;">
@@ -224,14 +239,37 @@ function createWidget() {
     
     // 초기 업데이트
     updateWidgetContent();
-
-    console.log('createWidget');
 }
 
 // 위젯 이벤트 설정
 function setupWidgetEvents() {
     const widget = widgetData.widget;
+
     if (!widget) return;
+    
+    // 새로고침 버튼
+    const refreshBtn = widget.querySelector('#widget-refresh');
+    const refreshIcon = widget.querySelector('#widget-refresh-icon');
+    if (refreshBtn && refreshIcon) {
+        refreshBtn.addEventListener('click', () => {
+            // 로딩 애니메이션
+            refreshIcon.style.transform = 'rotate(360deg)';
+            refreshIcon.style.opacity = '0.5';
+            refreshBtn.disabled = true;
+            // 주가 데이터 요청
+            chrome.runtime.sendMessage({ action: 'getCurrentPrice' }, (response) => {
+                setTimeout(() => {
+                    refreshIcon.style.transform = '';
+                    refreshIcon.style.opacity = '1';
+                    refreshBtn.disabled = false;
+                }, 600);
+                if (response && response.price) {
+                    widgetData.currentPrice = response.price;
+                    updateWidgetContent();
+                }
+            });
+        });
+    }
     
     // 닫기 버튼
     const closeBtn = widget.querySelector('#widget-close');
@@ -542,17 +580,14 @@ async function initializeWidget() {
         
         // 위젯 표시 설정이 활성화되어 있으면 위젯 생성
         if (widgetData.settings.enableWidget !== false) {
-            showWidget();
-        }
-        
-        // 현재 가격 요청
-        chrome.runtime.sendMessage({ action: 'getCurrentPrice' }, (response) => {
-            if (response && response.price) {
-                widgetData.currentPrice = response.price;
-                updateWidgetContent();
-            }
-        });
-        
+            chrome.runtime.sendMessage({ action: 'getCurrentPrice' }, (response) => {
+                if (response && response.price) {
+                    widgetData.currentPrice = response.price;
+                    updateWidgetContent();
+                    showWidget();
+                }
+            });
+        }        
     } catch (error) {
         console.error('위젯 초기화 실패:', error);
         // 오류가 있어도 기본값으로 위젯 표시

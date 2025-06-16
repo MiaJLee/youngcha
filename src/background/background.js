@@ -82,7 +82,7 @@ chrome.runtime.onInstalled.addListener(async () => {
 	})
 
 	// 초기 가격 조회
-	await fetchAndUpdatePrice()
+	await fetchAndUpdatePrice();
 })
 
 // 시작 시 설정 로드
@@ -99,6 +99,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 	}
 })
 
+
 // 메시지 처리
 chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
 
@@ -114,7 +115,7 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
 
 		case 'getCurrentPrice':
 			sendResponse({ price: currentPrice })
-			break
+			return true;
 
 		case 'forceUpdate':
 			await fetchAndUpdatePriceForced()
@@ -142,6 +143,9 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
 			// 모든 탭에 위젯 업데이트 메시지 전송
 			await updateWidget()
 			break
+		case 'wakeUp':
+			sendResponse({ success: true });
+			break;
 	}
 })
 
