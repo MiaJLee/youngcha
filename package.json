@@ -4,8 +4,9 @@
 	"description": "카카오 RSU 실시간 자산 조회 및 동기부여 위젯",
 	"main": "manifest.json",
 	"scripts": {
-		"dev": "echo 'Development mode - load extension in Chrome'",
-		"build": "echo 'Building extension...' && npm run validate",
+		"dev": "vite",
+		"build": "vite build",
+		"preview": "vite preview",
 		"validate": "node -e \"console.log('Validating manifest.json...'); JSON.parse(require('fs').readFileSync('manifest.json', 'utf8')); console.log('✅ Valid!')\"",
 		"test": "node tests/test_calculation.js",
 		"clean": "rm -rf dist/",
