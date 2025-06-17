@@ -7,6 +7,11 @@
 		"dev": "vite",
 		"build": "vite build",
 		"preview": "vite preview",
+		"release": "standard-version",
+		"release:minor": "standard-version --release-as minor",
+		"release:major": "standard-version --release-as major",
+		"release:patch": "standard-version --release-as patch",
+		"postrelease": "node scripts/sync-manifest-version.js",
 		"validate": "node -e \"console.log('Validating manifest.json...'); JSON.parse(require('fs').readFileSync('manifest.json', 'utf8')); console.log('✅ Valid!')\"",
 		"test": "node tests/test_calculation.js",
 		"clean": "rm -rf dist/",
@@ -23,8 +28,9 @@
 	"author": "mia.ow",
 	"license": "MIT",
 	"devDependencies": {
+		"eslint": "^8.0.0",
 		"prettier": "^3.0.0",
-		"eslint": "^8.0.0"
+		"standard-version": "^9.5.0"
 	},
 	"engines": {
 		"node": ">=16.0.0"
