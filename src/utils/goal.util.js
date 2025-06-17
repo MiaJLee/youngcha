@@ -14,7 +14,7 @@ export const targets = {
 	tesla: {
 		icon: '🏎',
 		name: '테슬라 Model 3',
-		price: 60000000,
+		price: 51990000,
 		id: 'tesla',
 	},
 	custom: null, // 커스텀 목표 (사용자가 설정)

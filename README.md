@@ -172,7 +172,7 @@ const profitRate = ((currentPrice - avgPrice) / avgPrice) * 100
 // 목표 객체 정의
 export const targets = {
 	flight: { icon: '🛩', name: '유럽 왕복 일등석 항공권', price: 12000000, id: 'flight' },
-	tesla: { icon: '🏎', name: '테슬라 Model 3', price: 60000000, id: 'tesla' },
+	tesla: { icon: '🏎', name: '테슬라 Model 3', price: 51990000, id: 'tesla' },
 	custom: null // 사용자 정의 목표
 }
 

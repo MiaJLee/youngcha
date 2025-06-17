@@ -11,7 +11,7 @@ const targets = {
 	tesla: {
 		icon: '🏎',
 		name: '테슬라 Model 3',
-		price: 60000000,
+		price: 51990000,
 		id: 'tesla',
 	},
 	custom: null, // 커스텀 목표 (사용자가 설정)
@@ -39,7 +39,9 @@ let widgetData = {
         theme: 'light',
         enableNotifications: true // 알림 활성화 여부(기본값 true, 실제 설정에 따라 변경됨)
     },
-    notifiedTargets: {} // 목표별 알림 여부 기록
+    notifiedTargets: {}, // 목표별 알림 여부 기록
+    isMinimized: false, // 최소화 상태 저장
+    widgetPosition: null // 위젯 위치(left, top) 저장
 };
 
 // 위젯 HTML 생성
@@ -221,11 +223,29 @@ function createWidget() {
     
     widgetData.widget = document.getElementById('rsu-tracker-widget');
     
+    // 위치 복원
+    chrome.storage.sync.get(['widgetPosition'], (result) => {
+        if (result.widgetPosition && widgetData.widget) {
+            widgetData.widget.style.left = result.widgetPosition.left;
+            widgetData.widget.style.top = result.widgetPosition.top;
+            widgetData.widget.style.right = 'auto';
+            widgetData.widget.style.bottom = 'auto';
+        }
+    });
+    
     // 이벤트 설정
     setupWidgetEvents();
     
     // 초기 업데이트
     updateWidgetContent();
+    // 최소화 상태 복원
+    chrome.storage.sync.get(['widgetMinimized'], (result) => {
+        if (result.widgetMinimized) {
+            minimizeWidget();
+        } else {
+            maximizeWidget();
+        }
+    });
 }
 
 // 위젯 이벤트 설정
@@ -257,22 +277,14 @@ function setupWidgetEvents() {
     
     if (minimizeBtn && content && minimized && header) {
         minimizeBtn.addEventListener('click', () => {
-            content.style.display = 'none';
-            header.style.display = 'none';
-            minimized.style.display = 'flex';
-            widget.style.height = '30px';
-            // 최소화 모드에서도 진행률 업데이트
-            updateProgressBars();
+            minimizeWidget();
         });
     }
     
     // 최대화 버튼
     if (maximizeBtn && content && minimized && header) {
         maximizeBtn.addEventListener('click', () => {
-            content.style.display = 'block';
-            header.style.display = 'flex';
-            minimized.style.display = 'none';
-            widget.style.height = 'auto';
+            maximizeWidget();
         });
     }
     
@@ -331,6 +343,13 @@ function setupDragEvents() {
     });
     
     document.addEventListener('mouseup', () => {
+        if (isDragging && widget) {
+            // 위치 저장
+            chrome.storage.sync.set({ widgetPosition: {
+                left: widget.style.left,
+                top: widget.style.top
+            }});
+        }
         isDragging = false;
     });
 }
@@ -591,4 +610,38 @@ function checkTargetAchievement() {
             widgetData.notifiedTargets[target.id] = false;
         }
     });
+}
+
+// 최소화/최대화 함수 분리
+function minimizeWidget() {
+    const widget = widgetData.widget;
+    if (!widget) return;
+    const content = widget.querySelector('#widget-content');
+    const minimized = widget.querySelector('#widget-minimized');
+    const header = widget.querySelector('#widget-header');
+    if (content && minimized && header) {
+        content.style.display = 'none';
+        header.style.display = 'none';
+        minimized.style.display = 'flex';
+        widget.style.height = '30px';
+        widgetData.isMinimized = true;
+        chrome.storage.sync.set({ widgetMinimized: true });
+        updateProgressBars();
+    }
+}
+
+function maximizeWidget() {
+    const widget = widgetData.widget;
+    if (!widget) return;
+    const content = widget.querySelector('#widget-content');
+    const minimized = widget.querySelector('#widget-minimized');
+    const header = widget.querySelector('#widget-header');
+    if (content && minimized && header) {
+        content.style.display = 'block';
+        header.style.display = 'flex';
+        minimized.style.display = 'none';
+        widget.style.height = 'auto';
+        widgetData.isMinimized = false;
+        chrome.storage.sync.set({ widgetMinimized: false });
+    }
 } 
