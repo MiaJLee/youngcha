@@ -5,7 +5,6 @@
 	"description": "카카오 RSU 실시간 자산 조회 및 동기부여 위젯",
 	"permissions": ["storage", "notifications", "alarms", "activeTab", "tabs", "scripting"],
 	"host_permissions": [
-		"<all_urls>",
 		"https://polling.finance.naver.com/*",
 		"https://yfapi.net/*",
 		"https://query1.finance.yahoo.com/*",
@@ -29,7 +28,12 @@
 	},
 	"content_scripts": [
 		{
-			"matches": ["<all_urls>"],
+			"matches": [
+				"https://kakao.agit.in/*",
+				"https://jira.daumkakao.com/*",
+				"https://github.daumkakao.com/*",
+				"https://wiki.daumkakao.com/*"
+			],
 			"js": ["src/content/content.js"],
 			"run_at": "document_end"
 		}
@@ -40,5 +44,4 @@
 		"64": "assets/icons/icon64.png",
 		"128": "assets/icons/icon128.png"
 	}
-
 }
