@@ -1,0 +1,10 @@
+{
+	"overrides": [
+		{
+			"files": ["vite.config.mjs"],
+			"parserOptions": {
+				"sourceType": "module"
+			}
+		}
+	]
+}
