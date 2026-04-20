@@ -1,7 +1,17 @@
 // API 유틸리티 함수들 import
-import { fetchKakaoPrice as fetchKakaoPriceAPI, isKoreanMarketOpen, getMarketStatusMessage } from '../utils/api.util.js'
+import {
+	fetchKakaoPrice as fetchKakaoPriceAPI,
+	isKoreanMarketOpen,
+	getMarketStatusMessage,
+} from '../utils/api.util.js'
 // 목표 및 시뮬레이션 유틸리티 함수들 import
-import { updateSimulation, renderSimulation, addCustomTargetNew, loadCustomTarget, updateHeaderButton } from '../utils/goal.util.js'
+import {
+	updateSimulation,
+	renderSimulation,
+	addCustomTargetNew,
+	loadCustomTarget,
+	updateHeaderButton,
+} from '../utils/goal.util.js'
 
 // 전역 변수
 let currentPrice = 0
@@ -50,7 +60,6 @@ window.goalUpdateCallback = () => {
 
 // 알림 함수를 window에 노출
 window.showNotification = showNotification
-
 
 // 초기화
 document.addEventListener('DOMContentLoaded', async () => {
@@ -149,7 +158,6 @@ function setupEventListeners() {
 		}, 300)
 	)
 
-
 	// 설정 변경
 	elements.enableWidget.addEventListener('change', () => {
 		saveSettings()
@@ -167,7 +175,7 @@ async function fetchKakaoPrice(force = false) {
 		// 한국 주식 시장 운영 시간 체크 (강제 모드가 아닐 때만)
 		if (!force && !isKoreanMarketOpen()) {
 			const statusMessage = getMarketStatusMessage()
-			
+
 			// 시장 시간 외에는 API 호출하지 않고 저장된 데이터만 표시
 			showNotification(`📅 ${statusMessage}`)
 			showLoading(false)
@@ -238,8 +246,6 @@ function updateDisplay() {
 	const rsuAmount = parseFloat(elements.rsuAmount.value) || 0
 	const avgPrice = parseFloat(elements.avgPrice.value) || 0
 
-
-
 	// RSU 수량 표시 업데이트
 	if (elements.rsuAmountDisplay) {
 		if (rsuAmount > 0) {
@@ -278,7 +284,6 @@ function updateDisplay() {
 			elements.profitRate.className = `value ${profitRate >= 0 ? 'positive' : 'negative'}`
 		}
 	} else {
-
 		if (elements.profitRate) {
 			if (currentPrice === 0) {
 				elements.profitRate.textContent = '조회중...'
@@ -312,10 +317,6 @@ function updateDisplay() {
 	updatePriceDisplay()
 }
 
-
-
-
-
 // 데이터 저장
 async function saveData() {
 	const rsuAmount = parseFloat(elements.rsuAmount.value) || 0
@@ -335,7 +336,7 @@ async function saveData() {
 		await saveCurrentPrice()
 
 		updateDisplay()
-		
+
 		// 위젯에 즉시 업데이트된 데이터 전송
 		await updateWidgetWithCurrentData()
 
@@ -374,7 +375,6 @@ async function saveCurrentPrice(source = '') {
 				await chrome.storage.local.set({ priceData })
 			}
 
-			
 			// 위젯에 즉시 데이터 전송
 			await updateWidgetWithCurrentData(source)
 		} catch (error) {
@@ -394,11 +394,7 @@ async function loadStoredPrice() {
 		}
 
 		if (result && result.priceData) {
-			const {
-				currentPrice: savedPrice,
-				lastPriceUpdate,
-				source: savedSource,
-			} = result.priceData
+			const { currentPrice: savedPrice, lastPriceUpdate, source: savedSource } = result.priceData
 
 			if (savedPrice > 0) {
 				currentPrice = savedPrice
@@ -407,7 +403,7 @@ async function loadStoredPrice() {
 				if (lastPriceUpdate && elements.lastUpdate) {
 					const updateTime = new Date(lastPriceUpdate)
 					const timeStr = updateTime.toLocaleString('ko-KR')
-					
+
 					if (savedSource) {
 						elements.lastUpdate.innerHTML = `${timeStr}<br/>(${savedSource} 제공)`
 					} else {
@@ -529,7 +525,6 @@ function toggleEditMode() {
 		if (!elements.rsuAmount.value) {
 			elements.rsuAmount.focus()
 		}
-
 	} else {
 		// 수정 모드 비활성화
 		// 입력 요소 숨기고 표시 요소 보이기
@@ -544,13 +539,11 @@ function toggleEditMode() {
 
 		// 화면 업데이트
 		updateDisplay()
-
 	}
 }
 
 // 수정 취소
 function cancelEdit() {
-
 	// 저장된 데이터로 되돌리기
 	loadStoredData().then(() => {
 		toggleEditMode() // 수정 모드 해제
@@ -560,7 +553,6 @@ function cancelEdit() {
 
 // 수동 새로고침
 async function refreshPrice() {
-
 	// 새로운 API 요청 (시장 시간 무관하게 실행)
 	await fetchKakaoPrice(true) // force=true로 시장 시간 체크 무시
 
@@ -578,7 +570,7 @@ async function refreshPrice() {
 function updateLastUpdate(source = '') {
 	const now = new Date()
 	const timeStr = now.toLocaleString('ko-KR')
-	
+
 	if (source && elements.lastUpdate) {
 		elements.lastUpdate.innerHTML = `${timeStr}<br/>(${source} 제공)`
 	} else if (elements.lastUpdate) {
@@ -598,7 +590,6 @@ function showLoading(show) {
 
 // 알림 표시
 function showNotification(message) {
-
 	// Chrome 알림 API 사용
 	if (chrome.notifications) {
 		chrome.notifications.create({
@@ -628,44 +619,25 @@ async function updateWidgetWithCurrentData(source = '') {
 	try {
 		const rsuAmount = parseFloat(elements.rsuAmount.value) || 0
 		const avgPrice = parseFloat(elements.avgPrice.value) || 0
-		
+
 		const userData = {
 			rsuAmount: rsuAmount,
 			avgPrice: avgPrice,
 			lastSaved: new Date().toISOString(),
 		}
-		
+
 		// 설정 정보도 함께 전송
 		const settingsResult = await chrome.storage.sync.get(['settings'])
 		const settings = settingsResult.settings || { enableWidget: true }
-		
+
 		// 백그라운드 스크립트를 통해 위젯에 데이터 전송
 		chrome.runtime.sendMessage({
 			action: 'updateWidget',
 			price: currentPrice,
 			userData: userData,
 			settings: settings,
-			source: source
+			source: source,
 		})
-		
-		// 현재 활성 탭에만 직접 메시지 전송 (백그라운드 스크립트가 응답하지 않을 경우 대비)
-		try {
-			chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
-				if (tabs.length > 0) {
-					chrome.tabs.sendMessage(tabs[0].id, {
-						action: 'updateWidget',
-						price: currentPrice,
-						userData: userData,
-						settings: settings,
-						source: source
-					}).catch(() => {
-						// 탭이 응답하지 않으면 무시
-					})
-				}
-			})
-		} catch (error) {
-		}
-		
 	} catch (error) {
 		console.error('위젯 데이터 전송 실패:', error)
 	}
@@ -677,24 +649,27 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 		currentPrice = request.price
 		updatePriceDisplay()
 		updateDisplay()
-		
+
 		// API 소스 정보가 있으면 마지막 업데이트 시간에 포함
 		if (request.source) {
 			updateLastUpdate(request.source)
 		}
-		
+
 		// 위젯에도 업데이트된 가격 전송
 		updateWidgetWithCurrentData(request.source)
 	}
 })
 
 // 주기적 업데이트 (5분마다)
-setInterval(async () => {
-	if (document.visibilityState === 'visible' && isKoreanMarketOpen()) {
-		await fetchKakaoPrice()
-		updateDisplay()
-	} else if (document.visibilityState === 'visible') {
-		// 시장 시간 외에는 UI만 업데이트 (저장된 데이터로)
-		updateDisplay()
-	}
-}, 5 * 60 * 1000)
+setInterval(
+	async () => {
+		if (document.visibilityState === 'visible' && isKoreanMarketOpen()) {
+			await fetchKakaoPrice()
+			updateDisplay()
+		} else if (document.visibilityState === 'visible') {
+			// 시장 시간 외에는 UI만 업데이트 (저장된 데이터로)
+			updateDisplay()
+		}
+	},
+	5 * 60 * 1000
+)

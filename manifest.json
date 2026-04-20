@@ -1,9 +1,9 @@
 {
 	"manifest_version": 3,
 	"name": "카카오 실시간 RSU 추적기",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "카카오 RSU 실시간 자산 조회 및 동기부여 위젯",
-	"permissions": ["storage", "notifications", "alarms", "tabs"],
+	"permissions": ["storage", "notifications", "alarms", "contextMenus"],
 	"host_permissions": [
 		"https://polling.finance.naver.com/*",
 		"https://yfapi.net/*",

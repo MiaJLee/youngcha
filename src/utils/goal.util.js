@@ -14,7 +14,7 @@ export const targets = {
 	tesla: {
 		icon: '🏎',
 		name: '테슬라 Model 3',
-		price: 51990000,
+		price: 41990000,
 		id: 'tesla',
 	},
 	custom: null, // 커스텀 목표 (사용자가 설정)
@@ -29,9 +29,9 @@ export const customEmojis = ['⛱️', '⭐', '🎁', '🏆', '💎']
  */
 export function getCurrentTarget() {
 	if (targets.custom) {
-		return targets.custom;
+		return targets.custom
 	}
-	return targets.tesla;
+	return targets.tesla
 }
 
 /**
@@ -123,7 +123,7 @@ export function editCustomTargetInline(targetId) {
 	// 이모지 라디오 버튼 생성
 	const emojiRadios = customEmojis
 		.map(
-			(emoji) =>
+			emoji =>
 				`<label class="emoji-option ${emoji === currentIcon ? 'selected' : ''}">
 			<input type="radio" name="customEmoji" value="${emoji}" ${emoji === currentIcon ? 'checked' : ''}>
 			<span class="emoji-display">${emoji}</span>
@@ -248,7 +248,7 @@ export async function saveCustomTargetInline(targetId) {
 		icon: icon,
 		name: name,
 		price: price,
-		id: 'custom'
+		id: 'custom',
 	}
 
 	try {
@@ -258,7 +258,7 @@ export async function saveCustomTargetInline(targetId) {
 		// UI 업데이트
 		renderSimulation()
 		updateHeaderButton()
-		
+
 		// 외부 함수 호출 (popup.js에서 전달받아야 함)
 		if (window.goalUpdateCallback) {
 			window.goalUpdateCallback()
@@ -296,7 +296,7 @@ export function addCustomTargetNew() {
 			icon: '🎯',
 			name: '새 목표',
 			price: 1000000,
-			id: 'custom'
+			id: 'custom',
 		}
 
 		// UI 업데이트 후 바로 수정 모드로
@@ -333,7 +333,7 @@ export async function removeCustomTarget() {
 			// UI 업데이트
 			renderSimulation()
 			updateHeaderButton()
-			
+
 			// 외부 함수 호출
 			if (window.goalUpdateCallback) {
 				window.goalUpdateCallback()
@@ -365,7 +365,7 @@ export function updateHeaderButton() {
 				<path d="M18.5 2.50005C18.8978 2.10223 19.4374 1.87873 20 1.87873C20.5626 1.87873 21.1022 2.10223 21.5 2.50005C21.8978 2.89787 22.1213 3.43745 22.1213 4.00005C22.1213 4.56266 21.8978 5.10223 21.5 5.50005L12 15L8 16L9 12L18.5 2.50005Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 			</svg>
 		`
-		button.title = "목표 수정하기"
+		button.title = '목표 수정하기'
 	} else {
 		// 커스텀 목표가 없으면 추가 버튼으로 변경
 		button.innerHTML = `
@@ -373,6 +373,6 @@ export function updateHeaderButton() {
 				<path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 			</svg>
 		`
-		button.title = "내 목표 추가하기"
+		button.title = '내 목표 추가하기'
 	}
-} 
+}

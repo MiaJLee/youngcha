@@ -1,5 +1,5 @@
 // 백그라운드 서비스 워커
-import { targets } from '../utils/goal.util.js';
+import { targets } from '../utils/goal.util.js'
 
 // 전역 변수
 let currentSettings = {}
@@ -13,26 +13,26 @@ let userData = {}
  */
 function isKoreanMarketOpen() {
 	const now = new Date()
-	
+
 	// KST (UTC+9) 시간으로 변환
 	const kstOffset = 9 * 60 * 60 * 1000 // 9시간을 밀리초로
-	const utc = now.getTime() + (now.getTimezoneOffset() * 60 * 1000)
+	const utc = now.getTime() + now.getTimezoneOffset() * 60 * 1000
 	const kstTime = new Date(utc + kstOffset)
-	
+
 	// 요일 체크 (0: 일요일, 1: 월요일, ..., 6: 토요일)
 	const dayOfWeek = kstTime.getDay()
 	if (dayOfWeek === 0 || dayOfWeek === 6) {
 		return false // 주말
 	}
-	
+
 	// 시간 체크 (09:00 ~ 15:30)
 	const hour = kstTime.getHours()
 	const minute = kstTime.getMinutes()
 	const currentTime = hour * 100 + minute // HHMM 형태로 변환
-	
-	const marketOpen = 900   // 09:00
+
+	const marketOpen = 900 // 09:00
 	const marketClose = 1530 // 15:30
-	
+
 	return currentTime >= marketOpen && currentTime <= marketClose
 }
 
@@ -49,13 +49,12 @@ function getDateString(dayOffset) {
 
 // 설치 시 초기화
 chrome.runtime.onInstalled.addListener(async () => {
-
 	// 기본 설정값 설정
 	const defaultSettings = {
-	enableWidget: true,
-	enableNotifications: true,
-	theme: 'light',
-}
+		enableWidget: true,
+		enableNotifications: true,
+		theme: 'light',
+	}
 
 	await chrome.storage.sync.set({ settings: defaultSettings })
 
@@ -66,7 +65,7 @@ chrome.runtime.onInstalled.addListener(async () => {
 	})
 
 	// 초기 가격 조회
-	await fetchAndUpdatePrice();
+	await fetchAndUpdatePrice()
 })
 
 // 시작 시 설정 로드
@@ -77,16 +76,14 @@ chrome.runtime.onStartup.addListener(async () => {
 })
 
 // 알람 처리
-chrome.alarms.onAlarm.addListener(async (alarm) => {
+chrome.alarms.onAlarm.addListener(async alarm => {
 	if (alarm.name === 'priceUpdate') {
 		await fetchAndUpdatePrice()
 	}
 })
 
-
 // 메시지 처리
 chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
-
 	switch (request.action) {
 		case 'updateSettings':
 			currentSettings = request.settings
@@ -99,31 +96,31 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
 
 		case 'getCurrentPrice':
 			sendResponse({ price: currentPrice })
-			return true;
+			return true
 
 		case 'forceUpdate':
 			await fetchAndUpdatePriceForced()
 			sendResponse({ success: true })
 			break
-			
+
 		case 'updateWidget':
 			// 팝업에서 온 위젯 업데이트 요청 처리
-			
+
 			// 현재 가격 업데이트
 			if (request.price) {
 				currentPrice = request.price
 			}
-			
+
 			// 사용자 데이터 업데이트
 			if (request.userData) {
 				userData = request.userData
 			}
-			
+
 			// 설정 업데이트
 			if (request.settings) {
 				currentSettings = request.settings
 			}
-			
+
 			// 모든 탭에 위젯 업데이트 메시지 전송
 			await updateWidget()
 			break
@@ -133,19 +130,17 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
 					type: 'basic',
 					iconUrl: 'assets/icons/icon64.png',
 					title: '목표 달성! 🎉',
-					message: `${request.target.icon || '🎯'} ${request.target.name} 목표를 달성했습니다!\n축하합니다!`
-				});
+					message: `${request.target.icon || '🎯'} ${request.target.name} 목표를 달성했습니다!\n축하합니다!`,
+				})
 			}
-			break;
+			break
 	}
 })
 
 // 가격 조회 및 업데이트 (여러 API 시도)
 async function fetchAndUpdatePrice() {
-
 	// 시장 시간 체크 - 시장이 닫혀있으면 API 호출 건너뛰기
 	if (!isKoreanMarketOpen()) {
-		
 		// 배지는 기존 데이터로 업데이트
 		if (currentPrice > 0) {
 			await updateBadge()
@@ -169,7 +164,6 @@ async function fetchAndUpdatePrice() {
 				// 가격 변동 체크
 				const priceChanged = currentPrice !== price
 				currentPrice = Math.round(price)
-
 
 				// 배지 업데이트
 				await updateBadge()
@@ -205,7 +199,7 @@ async function fetchAndUpdatePrice() {
 
 	// 현재 가격이 0이면 추정값 사용
 	if (currentPrice === 0) {
-		const basePrice = 51400  // 2024년 카카오 주가 기준으로 업데이트
+		const basePrice = 51400 // 2024년 카카오 주가 기준으로 업데이트
 		const variation = Math.floor(Math.random() * 4000) - 2000
 		currentPrice = basePrice + variation
 		await updateBadge()
@@ -213,7 +207,6 @@ async function fetchAndUpdatePrice() {
 
 	return false
 }
-
 
 // Background용 Yahoo Finance API
 async function fetchFromYahooFinanceAPI() {
@@ -293,7 +286,8 @@ async function fetchFromSearchAPI() {
 		{
 			method: 'GET',
 			headers: {
-				'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_7_1 like Mac OS X) AppleWebKit/605.1.15',
+				'User-Agent':
+					'Mozilla/5.0 (iPhone; CPU iPhone OS 14_7_1 like Mac OS X) AppleWebKit/605.1.15',
 			},
 		}
 	)
@@ -310,8 +304,6 @@ async function fetchFromSearchAPI() {
 
 	throw new Error('검색 API에서 가격 데이터 없음')
 }
-
-
 
 // 배지 업데이트
 async function updateBadge() {
@@ -334,45 +326,39 @@ async function updateBadge() {
 	}
 }
 
-// 위젯 업데이트
+// 위젯 업데이트 (tabs 권한 없이 작동)
 async function updateWidget() {
 	try {
-		// 모든 탭에 위젯 업데이트 메시지 전송
-		const tabs = await chrome.tabs.query({})
-
-		for (const tab of tabs) {
-			try {
-				await chrome.tabs.sendMessage(tab.id, {
-					action: 'updateWidget',
-					price: currentPrice,
-					userData: userData,
-					settings: currentSettings,
-				})
-			} catch (error) {
-				// 탭이 응답하지 않으면 무시 (Content Script가 없는 탭)
-			}
-		}
+		// 팝업이 열려있으면 가격 업데이트 알림
+		chrome.runtime
+			.sendMessage({
+				action: 'priceUpdated',
+				price: currentPrice,
+				userData: userData,
+				settings: currentSettings,
+			})
+			.catch(() => {
+				// 팝업이 열려있지 않으면 무시
+			})
 	} catch (error) {
 		console.error('위젯 업데이트 실패:', error)
 	}
 }
 
-// 위젯 토글
+// 위젯 토글 (tabs 권한 없이 작동)
 async function toggleWidget(enabled) {
 	currentSettings.enableWidget = enabled
 
 	try {
-		const tabs = await chrome.tabs.query({})
-
-		for (const tab of tabs) {
-			try {
-				await chrome.tabs.sendMessage(tab.id, {
-					action: enabled ? 'showWidget' : 'hideWidget',
-				})
-			} catch (error) {
-				// 무시
-			}
-		}
+		// 팝업에만 설정 변경 알림
+		chrome.runtime
+			.sendMessage({
+				action: 'widgetToggled',
+				enabled: enabled,
+			})
+			.catch(() => {
+				// 팝업이 열려있지 않으면 무시
+			})
 	} catch (error) {
 		console.error('위젯 토글 실패:', error)
 	}
@@ -397,7 +383,7 @@ async function loadUserData() {
 		if (result.userData) {
 			userData = result.userData
 		}
-		
+
 		// 커스텀 목표 로드
 		const localResult = await chrome.storage.local.get(['customTarget'])
 		if (localResult.customTarget) {
@@ -424,12 +410,12 @@ chrome.storage.onChanged.addListener(async (changes, namespace) => {
 			}
 		}
 	}
-	
+
 	// 로컬 스토리지 변경 감지 (커스텀 목표용)
 	if (namespace === 'local') {
 		if (changes.customTarget) {
 			targets.custom = changes.customTarget.newValue || null
-			
+
 			// 위젯 업데이트
 			if (currentSettings.enableWidget) {
 				await updateWidget()
@@ -459,15 +445,8 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 	}
 })
 
-// 알림 클릭 처리
-chrome.notifications.onClicked.addListener((notificationId) => {
-	// 팝업 열기
-	chrome.action.openPopup()
-})
-
 // 강제 가격 조회 및 업데이트 (시장 시간 무시) - KRX 우선
 async function fetchAndUpdatePriceForced() {
-
 	// API 시도 순서 - Yahoo Finance를 최우선으로 사용 (시장 시간 체크 제거된 버전)
 	const apiMethods = [
 		{ func: () => fetchFromYahooFinanceAPIForced(), name: 'Yahoo Finance' },
@@ -484,7 +463,6 @@ async function fetchAndUpdatePriceForced() {
 				// 가격 변동 체크
 				const priceChanged = currentPrice !== price
 				currentPrice = Math.round(price)
-
 
 				// 배지 업데이트
 				await updateBadge()
@@ -520,7 +498,7 @@ async function fetchAndUpdatePriceForced() {
 
 	// 현재 가격이 0이면 추정값 사용
 	if (currentPrice === 0) {
-		const basePrice = 51400  // 2024년 카카오 주가 기준으로 업데이트
+		const basePrice = 51400 // 2024년 카카오 주가 기준으로 업데이트
 		const variation = Math.floor(Math.random() * 4000) - 2000
 		currentPrice = basePrice + variation
 		await updateBadge()
@@ -528,10 +506,6 @@ async function fetchAndUpdatePriceForced() {
 
 	return false
 }
-
-
-
-
 
 // Background용 Yahoo Finance API (시장 시간 무시)
 async function fetchFromYahooFinanceAPIForced() {
@@ -599,7 +573,8 @@ async function fetchFromSearchAPIForced() {
 		{
 			method: 'GET',
 			headers: {
-				'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_7_1 like Mac OS X) AppleWebKit/605.1.15',
+				'User-Agent':
+					'Mozilla/5.0 (iPhone; CPU iPhone OS 14_7_1 like Mac OS X) AppleWebKit/605.1.15',
 			},
 		}
 	)
@@ -623,18 +598,17 @@ async function fetchFromNaverFinanceAPI() {
 		throw new Error('한국 주식 시장이 닫혀있습니다')
 	}
 
-
 	const response = await fetch(
 		'https://polling.finance.naver.com/api/realtime/domestic/stock/035720',
 		{
 			method: 'GET',
 			headers: {
 				'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-				'Accept': 'application/json, text/javascript, */*; q=0.01',
+				Accept: 'application/json, text/javascript, */*; q=0.01',
 				'Accept-Language': 'ko-KR,ko;q=0.9',
 				'Cache-Control': 'no-cache',
-				'Referer': 'https://finance.naver.com/item/main.naver?code=035720'
-			}
+				Referer: 'https://finance.naver.com/item/main.naver?code=035720',
+			},
 		}
 	)
 
@@ -659,18 +633,17 @@ async function fetchFromNaverFinanceAPI() {
 
 // Background용 네이버 금융 API (강제 - 시장 시간 무시)
 async function fetchFromNaverFinanceAPIForced() {
-
 	const response = await fetch(
 		'https://polling.finance.naver.com/api/realtime/domestic/stock/035720',
 		{
 			method: 'GET',
 			headers: {
 				'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-				'Accept': 'application/json, text/javascript, */*; q=0.01',
+				Accept: 'application/json, text/javascript, */*; q=0.01',
 				'Accept-Language': 'ko-KR,ko;q=0.9',
 				'Cache-Control': 'no-cache',
-				'Referer': 'https://finance.naver.com/item/main.naver?code=035720'
-			}
+				Referer: 'https://finance.naver.com/item/main.naver?code=035720',
+			},
 		}
 	)
 
