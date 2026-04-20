@@ -1,108 +1,134 @@
 /**
- * API 호출 관련 유틸리티 함수들
- * ES6 모듈로 export하여 다른 스크립트에서 import 가능
+ * 카카오 주가 조회 공용 유틸리티
+ * - 시장 운영 시간 체크
+ * - Yahoo Finance / 네이버 금융 API 호출
+ * - Yahoo 응답 stale 여부 판정 + 자동 fallback
  */
 
-// API 호출 상태 관리
+const KAKAO_TICKER = '035720.KS'
+const KAKAO_CODE = '035720'
+
 let isFetchingPrice = false
 
-// 카카오 주가 조회 (여러 API 시도)
 /**
- * 카카오 주가 조회 (여러 API 시도)
- * @returns {Promise<{price: number, history: Array, source: string, isEstimated?: boolean}>} 주가 정보 객체
+ * 한국 주식 시장 운영 시간 체크 (평일 09:00 ~ 15:30 KST)
+ * @returns {boolean}
  */
-export async function fetchKakaoPrice() {
-	// 이미 API 호출 중이면 스킵
-	if (isFetchingPrice) {
-		return
+export function isKoreanMarketOpen() {
+	const kstTime = toKstDate(new Date())
+	const dayOfWeek = kstTime.getDay()
+	if (dayOfWeek === 0 || dayOfWeek === 6) return false
+
+	const currentTime = kstTime.getHours() * 100 + kstTime.getMinutes()
+	return currentTime >= 900 && currentTime <= 1530
+}
+
+/**
+ * 시장 상태 메시지
+ * @returns {string}
+ */
+export function getMarketStatusMessage() {
+	const kstTime = toKstDate(new Date())
+	const dayOfWeek = kstTime.getDay()
+	if (dayOfWeek === 0 || dayOfWeek === 6) return '주말 - 한국 주식 시장 휴장'
+
+	const currentTime = kstTime.getHours() * 100 + kstTime.getMinutes()
+	if (currentTime < 900) return '장 시작 전 - 오전 9시에 개장'
+	if (currentTime > 1530) return '장 마감 - 다음 거래일 오전 9시에 개장'
+	return '장 운영 중'
+}
+
+function toKstDate(date) {
+	const kstOffset = 9 * 60 * 60 * 1000
+	const utc = date.getTime() + date.getTimezoneOffset() * 60 * 1000
+	return new Date(utc + kstOffset)
+}
+
+/**
+ * Yahoo Finance 응답이 stale 상태인지 판정
+ * 장중인데 (1) 당일 일봉 집계(High/Low/Volume)가 전부 0 또는
+ * (2) regularMarketTime이 30분 이상 지난 경우 stale
+ * @param {Object} meta - Yahoo meta 객체 (chart.result[0].meta 또는 v7 quote result)
+ * @returns {boolean}
+ */
+export function isYahooDataStale(meta) {
+	if (!meta) return true
+	if (!isKoreanMarketOpen()) return false
+
+	if (
+		meta.regularMarketVolume === 0 &&
+		meta.regularMarketDayHigh === 0 &&
+		meta.regularMarketDayLow === 0
+	) {
+		return true
 	}
 
+	if (meta.regularMarketTime) {
+		const ageMin = (Date.now() - meta.regularMarketTime * 1000) / 60000
+		if (ageMin > 30) return true
+	}
+
+	return false
+}
+
+/**
+ * 카카오 주가 조회 (Yahoo 우선, stale 감지 시 네이버로 자동 fallback)
+ * @returns {Promise<{price: number, history: Array, source: string, isEstimated?: boolean}>}
+ */
+export async function fetchKakaoPrice() {
+	if (isFetchingPrice) return
 	isFetchingPrice = true
 
-	// API 시도 순서 - Yahoo Finance를 최우선으로 사용
 	const apiMethods = [
-		{ func: () => fetchFromYahooFinance(), name: 'Yahoo Finance' },
-		{ func: () => fetchFromAlternativeAPI(), name: 'Yahoo Finance (대체)' },
-		{ func: () => fetchFromNaverFinance(), name: '네이버 금융' },
+		{ func: fetchFromYahooFinance, name: 'Yahoo Finance' },
+		{ func: fetchFromYahooFinanceQuote, name: 'Yahoo Finance' },
+		{ func: fetchFromNaverFinance, name: 'Naver' },
 	]
 
-	for (let i = 0; i < apiMethods.length; i++) {
+	for (const method of apiMethods) {
 		try {
-			const priceData = await apiMethods[i].func()
-
+			const priceData = await method.func()
 			if (priceData && priceData.price > 0) {
 				const price = Math.round(priceData.price)
-
-				// 히스토리 데이터 처리 (최근 5일만)
-				let history = []
-				if (priceData.history && priceData.history.length > 0) {
-					history = priceData.history.slice(-5)
-				} else {
-					history = [
-						{
-							time: new Date(),
-							price: price,
-						},
-					]
-				}
+				const history =
+					priceData.history && priceData.history.length > 0
+						? priceData.history.slice(-5)
+						: [{ time: new Date(), price }]
 
 				isFetchingPrice = false
-				return { price, history, source: apiMethods[i].name }
+				return { price, history, source: method.name }
 			}
 		} catch (error) {
-			console.warn(`API ${i + 1} (${apiMethods[i].name}) 실패:`, error.message)
-			continue // 다음 API 시도
+			console.warn(`[${method.name}] 실패:`, error.message)
 		}
 	}
 
-	// 모든 API 실패 시 현재 시간 기준 실제 주가 추정
+	// 모든 소스 실패 시 추정값 (비상용)
 	console.error('모든 주가 API 실패, 추정값 사용')
-
-	// 2024년 카카오 주가 범위를 고려한 현실적인 값
-	const basePrice = 51400  // 2024년 카카오 주가 기준으로 업데이트
-	const variation = Math.floor(Math.random() * 4000) - 2000 // ±2000원 변동
+	const basePrice = 51400
+	const variation = Math.floor(Math.random() * 4000) - 2000
 	const estimatedPrice = basePrice + variation
 
-	const history = [
-		{
-			time: new Date(),
-			price: estimatedPrice,
-		},
-	]
-
 	isFetchingPrice = false
-	return { price: estimatedPrice, history, source: '추정값', isEstimated: true }
-}
-
-
-
-
-
-/**
- * 날짜 문자열 생성 헬퍼 함수
- * @param {number} dayOffset - 오늘로부터 며칠 전/후 (음수: 이전, 양수: 이후)
- * @returns {string} YYYYMMDD 형식의 날짜 문자열
- */
-function getDateString(dayOffset) {
-	const date = new Date()
-	date.setDate(date.getDate() + dayOffset)
-	return date.toISOString().slice(0, 10).replace(/-/g, '')
+	return {
+		price: estimatedPrice,
+		history: [{ time: new Date(), price: estimatedPrice }],
+		source: '추정값',
+		isEstimated: true,
+	}
 }
 
 /**
- * Yahoo Finance API로 카카오 주가 조회
- * @returns {Promise<{price: number, history: Array}>} 주가 정보 객체
+ * Yahoo Finance chart API (1순위)
+ * @returns {Promise<{price: number, history: Array}>}
  */
 export async function fetchFromYahooFinance() {
-
-	// 타임아웃 설정
 	const controller = new AbortController()
-	const timeoutId = setTimeout(() => controller.abort(), 10000) // 10초 타임아웃
+	const timeoutId = setTimeout(() => controller.abort(), 10000)
 
 	try {
-		// 더 나은 헤더와 옵션으로 요청
 		const response = await fetch(
-			'https://query1.finance.yahoo.com/v8/finance/chart/035720.KS?interval=1d&range=1mo',
+			`https://query1.finance.yahoo.com/v8/finance/chart/${KAKAO_TICKER}?interval=1d&range=1mo`,
 			{
 				method: 'GET',
 				signal: controller.signal,
@@ -116,52 +142,43 @@ export async function fetchFromYahooFinance() {
 			}
 		)
 
-		clearTimeout(timeoutId)
-
-		if (!response.ok) {
-			throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-		}
+		if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`)
 
 		const data = await response.json()
+		const result = data.chart?.result?.[0]
+		const meta = result?.meta
+		if (!meta) throw new Error('Yahoo Finance chart: meta 없음')
 
-		if (data.chart?.result?.[0]?.meta) {
-			const result = data.chart.result[0]
-			const meta = result.meta
-			const price = meta.regularMarketPrice || meta.previousClose
-
-			if (price && price > 0) {
-				// 히스토리 데이터도 함께 처리
-				const timestamps = result.timestamp || []
-				const prices = result.indicators?.quote?.[0]?.close || []
-
-				let history = []
-				if (timestamps.length > 0 && prices.length > 0) {
-					history = timestamps.slice(-5).map((timestamp, index) => ({
-						time: new Date(timestamp * 1000),
-						price: prices[index] || price,
-					}))
-				}
-
-				return { price, history }
-			}
+		if (isYahooDataStale(meta)) {
+			throw new Error('Yahoo Finance chart: 피드가 stale 상태')
 		}
 
-		throw new Error('Yahoo Finance: 유효한 가격 데이터 없음')
-	} catch (error) {
+		const price = meta.regularMarketPrice || meta.previousClose
+		if (!price || price <= 0) throw new Error('Yahoo Finance chart: 유효한 가격 없음')
+
+		const timestamps = result.timestamp || []
+		const prices = result.indicators?.quote?.[0]?.close || []
+		const history =
+			timestamps.length > 0 && prices.length > 0
+				? timestamps.slice(-5).map((ts, i) => ({
+						time: new Date(ts * 1000),
+						price: prices[i] || price,
+					}))
+				: []
+
+		return { price, history }
+	} finally {
 		clearTimeout(timeoutId)
-		throw error
 	}
 }
 
 /**
- * 대체 Yahoo Finance API로 카카오 주가 조회
- * @returns {Promise<{price: number, history: Array}>} 주가 정보 객체
+ * Yahoo Finance v7 quote API (2순위 fallback)
+ * @returns {Promise<{price: number, history: Array}>}
  */
-export async function fetchFromAlternativeAPI() {
-
-	// Yahoo Finance quote 엔드포인트 시도
+export async function fetchFromYahooFinanceQuote() {
 	const response = await fetch(
-		'https://query1.finance.yahoo.com/v7/finance/quote?symbols=035720.KS',
+		`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${KAKAO_TICKER}`,
 		{
 			method: 'GET',
 			headers: {
@@ -171,136 +188,55 @@ export async function fetchFromAlternativeAPI() {
 		}
 	)
 
-	if (!response.ok) {
-		throw new Error(`대체 API HTTP ${response.status}`)
-	}
+	if (!response.ok) throw new Error(`Yahoo quote HTTP ${response.status}`)
 
 	const data = await response.json()
+	const quote = data.quoteResponse?.result?.[0]
+	if (!quote?.regularMarketPrice) throw new Error('Yahoo quote: 유효한 가격 없음')
 
-	if (data.quoteResponse?.result?.[0]?.regularMarketPrice) {
-		const price = data.quoteResponse.result[0].regularMarketPrice
-		return { price, history: [] }
+	if (isYahooDataStale(quote)) {
+		throw new Error('Yahoo quote: 피드가 stale 상태')
 	}
 
-	throw new Error('대체 API: 유효한 가격 데이터 없음')
+	return { price: quote.regularMarketPrice, history: [] }
 }
 
 /**
- * 네이버 금융 API로 카카오 주가 조회 (5순위)
- * @returns {Promise<{price: number, history: Array}>} 주가 정보 객체
+ * 네이버 금융 API (최종 fallback, KRX 도메스틱 피드)
+ * @returns {Promise<{price: number, history: Array}>}
  */
 export async function fetchFromNaverFinance() {
-
-	// 타임아웃 설정
 	const controller = new AbortController()
-	const timeoutId = setTimeout(() => controller.abort(), 15000) // 15초 타임아웃
+	const timeoutId = setTimeout(() => controller.abort(), 15000)
 
 	try {
-		// 네이버 금융 API 사용
 		const response = await fetch(
-			'https://polling.finance.naver.com/api/realtime/domestic/stock/035720',
+			`https://polling.finance.naver.com/api/realtime/domestic/stock/${KAKAO_CODE}`,
 			{
 				method: 'GET',
 				signal: controller.signal,
 				headers: {
 					'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-					'Accept': 'application/json, text/javascript, */*; q=0.01',
+					Accept: 'application/json, text/javascript, */*; q=0.01',
 					'Accept-Language': 'ko-KR,ko;q=0.9',
 					'Cache-Control': 'no-cache',
-					'Referer': 'https://finance.naver.com/item/main.naver?code=035720'
-				}
+					Referer: `https://finance.naver.com/item/main.naver?code=${KAKAO_CODE}`,
+				},
 			}
 		)
 
-		clearTimeout(timeoutId)
-
-		if (!response.ok) {
-			throw new Error(`네이버 금융 HTTP ${response.status}: ${response.statusText}`)
-		}
+		if (!response.ok) throw new Error(`네이버 금융 HTTP ${response.status}`)
 
 		const data = await response.json()
+		const kakaoData = data.datas?.[0]
+		if (!kakaoData) throw new Error('네이버 금융: datas 없음')
 
-		// 네이버 금융 응답 파싱
-		if (data.datas && data.datas.length > 0) {
-			const kakaoData = data.datas[0]
-			const price = parseInt(kakaoData.nv?.replace(/,/g, '') || kakaoData.cv?.replace(/,/g, ''))
+		const raw = kakaoData.closePriceRaw || kakaoData.nv?.replace(/,/g, '') || kakaoData.cv?.replace(/,/g, '')
+		const price = parseInt(raw, 10)
+		if (!price || price <= 0) throw new Error('네이버 금융: 유효한 가격 없음')
 
-			if (price && price > 0) {
-				return { price, history: [] }
-			}
-		}
-
-		throw new Error('네이버 금융: 유효한 가격 데이터 없음')
-	} catch (error) {
+		return { price, history: [] }
+	} finally {
 		clearTimeout(timeoutId)
-		throw error
 	}
 }
-
-/**
- * 목표 설정 및 보상 시뮬레이션 관련 유틸리티 함수들
- * ES6 모듈로 export하여 다른 스크립트에서 import 가능
- */
-
-/**
- * 한국 주식 시장 운영 시간 체크
- * 평일 오전 9시 ~ 오후 3시 30분 (KST 기준)
- * @returns {boolean} 시장 운영 시간 여부
- */
-export function isKoreanMarketOpen() {
-	const now = new Date()
-	
-	// KST (UTC+9) 시간으로 변환
-	const kstOffset = 9 * 60 * 60 * 1000 // 9시간을 밀리초로
-	const utc = now.getTime() + (now.getTimezoneOffset() * 60 * 1000)
-	const kstTime = new Date(utc + kstOffset)
-	
-	// 요일 체크 (0: 일요일, 1: 월요일, ..., 6: 토요일)
-	const dayOfWeek = kstTime.getDay()
-	if (dayOfWeek === 0 || dayOfWeek === 6) {
-		return false // 주말
-	}
-	
-	// 시간 체크 (09:00 ~ 15:30)
-	const hour = kstTime.getHours()
-	const minute = kstTime.getMinutes()
-	const currentTime = hour * 100 + minute // HHMM 형태로 변환
-	
-	const marketOpen = 900   // 09:00
-	const marketClose = 1530 // 15:30
-	
-	return currentTime >= marketOpen && currentTime <= marketClose
-}
-
-/**
- * 시장 상태 메시지 반환
- * @returns {string} 시장 상태 설명
- */
-export function getMarketStatusMessage() {
-	const now = new Date()
-	const kstOffset = 9 * 60 * 60 * 1000
-	const utc = now.getTime() + (now.getTimezoneOffset() * 60 * 1000)
-	const kstTime = new Date(utc + kstOffset)
-	
-	const dayOfWeek = kstTime.getDay()
-	const hour = kstTime.getHours()
-	const minute = kstTime.getMinutes()
-	
-	if (dayOfWeek === 0 || dayOfWeek === 6) {
-		return '주말 - 한국 주식 시장 휴장'
-	}
-	
-	const currentTime = hour * 100 + minute
-	if (currentTime < 900) {
-		return '장 시작 전 - 오전 9시에 개장'
-	} else if (currentTime > 1530) {
-		return '장 마감 - 다음 거래일 오전 9시에 개장'
-	}
-	
-	return '장 운영 중'
-}
-
-/**
- * 카카오 주가 조회 (Yahoo Finance API)
- * @returns {Promise<Object|null>} 주가 정보 또는 null
- */
