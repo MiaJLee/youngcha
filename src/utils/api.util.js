@@ -80,9 +80,9 @@ export async function fetchKakaoPrice() {
 	isFetchingPrice = true
 
 	const apiMethods = [
+		{ func: fetchFromNaverFinance, name: 'Naver Finance' },
 		{ func: fetchFromYahooFinance, name: 'Yahoo Finance' },
 		{ func: fetchFromYahooFinanceQuote, name: 'Yahoo Finance' },
-		{ func: fetchFromNaverFinance, name: 'Naver' },
 	]
 
 	for (const method of apiMethods) {

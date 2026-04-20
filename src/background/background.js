@@ -97,10 +97,11 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
 	}
 })
 
-// 가격 조회 및 업데이트 (시장 시간 체크)
+// 가격 조회 및 업데이트
+// 장중에는 항상 fetch, 장 마감에는 캐시된 가격이 없을 때만 fetch (첫 노출 보장)
 async function fetchAndUpdatePrice() {
-	if (!isKoreanMarketOpen()) {
-		if (currentPrice > 0) await updateIcon()
+	if (!isKoreanMarketOpen() && currentPrice > 0) {
+		await updateIcon()
 		return false
 	}
 	return await updatePriceFromSources()

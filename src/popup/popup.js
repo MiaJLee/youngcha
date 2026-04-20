@@ -172,17 +172,6 @@ function setupEventListeners() {
 // 카카오 주가 조회 (API 유틸리티 사용)
 async function fetchKakaoPrice(force = false) {
 	try {
-		// 한국 주식 시장 운영 시간 체크 (강제 모드가 아닐 때만)
-		if (!force && !isKoreanMarketOpen()) {
-			const statusMessage = getMarketStatusMessage()
-
-			// 시장 시간 외에는 API 호출하지 않고 저장된 데이터만 표시
-			showNotification(`📅 ${statusMessage}`)
-			showLoading(false)
-			updateDisplay()
-			return
-		}
-
 		showLoading(true)
 
 		const result = await fetchKakaoPriceAPI()
@@ -660,14 +649,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 	}
 })
 
-// 주기적 업데이트 (5분마다)
+// 주기적 업데이트 (5분마다) - 장 마감 후에도 Naver는 직전 종가를 주므로 계속 갱신
 setInterval(
 	async () => {
-		if (document.visibilityState === 'visible' && isKoreanMarketOpen()) {
+		if (document.visibilityState === 'visible') {
 			await fetchKakaoPrice()
-			updateDisplay()
-		} else if (document.visibilityState === 'visible') {
-			// 시장 시간 외에는 UI만 업데이트 (저장된 데이터로)
 			updateDisplay()
 		}
 	},
